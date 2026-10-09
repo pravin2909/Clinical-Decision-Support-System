@@ -3,3 +3,8 @@ dist/
 *.local
 .vite/
 *.tsbuildinfo
+
+# Local env (keep .env.example tracked)
+.env
+.env.*
+!.env.example

@@ -10,6 +10,47 @@
   --text-muted: 100 116 139; /* secondary text */
   --border: 226 230 236; /* hairlines */
   font-family: "Inter", sans-serif;
+
+  /* Glass surfaces (light). Referenced by inline styles via var(); flip in .dark */
+  --glass-text: #0f172a;
+  --glass-panel-bg: linear-gradient(160deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.45) 55%, rgba(255,255,255,0.7) 100%);
+  --glass-panel-border: rgba(255,255,255,0.95);
+  --glass-panel-shadow: 0 0 0 1px rgba(15,23,42,0.06), 0 12px 32px rgba(15,23,42,0.08), inset 0 2px 1px rgba(255,255,255,1);
+  --glass-control-bg: linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.25) 50%, rgba(255,255,255,0.6) 100%);
+  --glass-control-border: rgba(255,255,255,0.95);
+  --glass-control-shadow: 0 0 0 1px rgba(15,23,42,0.07), 0 6px 16px rgba(15,23,42,0.10), inset 0 2px 1px rgba(255,255,255,1), inset 0 -2px 6px rgba(15,23,42,0.04);
+  --glass-strong-bg: linear-gradient(135deg, rgba(255,255,255,0.97) 0%, rgba(255,255,255,0.62) 50%, rgba(255,255,255,0.9) 100%);
+  --glass-strong-border: rgba(255,255,255,1);
+  --glass-strong-shadow: 0 0 0 1px rgba(15,23,42,0.09), 0 8px 20px rgba(15,23,42,0.12), inset 0 2px 1px rgba(255,255,255,1), inset 0 -2px 6px rgba(15,23,42,0.05);
+  --glass-recording-bg: linear-gradient(135deg, rgba(254,226,226,0.95) 0%, rgba(255,255,255,0.5) 50%, rgba(254,202,202,0.8) 100%);
+  --glass-recording-border: rgba(255,255,255,1);
+  --glass-recording-shadow: 0 0 0 1px rgba(225,29,72,0.25), 0 8px 20px rgba(225,29,72,0.20), inset 0 2px 1px rgba(255,255,255,1);
+  /* Fade over an uploaded image so status text stays readable */
+  --glass-scan-overlay: linear-gradient(to top, rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.4) 32%, rgba(255,255,255,0) 62%);
+
+  /* Chat surfaces: glassy in light mode (overridden to flat in .dark) */
+  --chat-panel-bg: var(--glass-panel-bg);
+  --chat-panel-border: var(--glass-panel-border);
+  --chat-panel-shadow: var(--glass-panel-shadow);
+  --chat-raised-bg: var(--glass-strong-bg);
+  --chat-raised-border: var(--glass-strong-border);
+  --chat-raised-shadow: var(--glass-strong-shadow);
+  --chat-control-bg: var(--glass-control-bg);
+  --chat-control-border: var(--glass-control-border);
+  --chat-control-shadow: var(--glass-control-shadow);
+  --chat-blur: blur(20px) saturate(185%);
+
+  /* Wordmark gradient: slate/black → vivid blue */
+  --logo-gradient: linear-gradient(120deg, #0b1220 0%, #1e293b 30%, #0284c7 66%, #38bdf8 100%);
+  --logo-glow: drop-shadow(0 1px 10px rgba(56, 189, 248, 0.28));
+
+  /* Landing hero glass (blue-tinted) — buttons + navbar */
+  --glass-hero-bg: linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.22) 48%, rgba(255,255,255,0.55) 100%);
+  --glass-hero-border: rgba(255,255,255,0.95);
+  --glass-hero-shadow: 0 0 0 1px rgba(99,102,241,0.12), 0 14px 34px rgba(59,130,246,0.24), inset 0 2px 1px rgba(255,255,255,1), inset 0 -3px 8px rgba(59,130,246,0.14);
+  --glass-nav-bg: linear-gradient(135deg, rgba(255,255,255,0.75), rgba(255,255,255,0.45));
+  --glass-nav-border: rgba(255,255,255,0.9);
+  --glass-nav-shadow: 0 0 0 1px rgba(99,102,241,0.12), 0 12px 32px rgba(59,130,246,0.16), inset 0 1.5px 1px rgba(255,255,255,1);
 }
 
 .dark {
@@ -19,12 +60,59 @@
   --text: 240 240 242;
   --text-muted: 158 158 165;
   --border: 44 44 48;
+
+  /* Glass surfaces (dark): translucent light tint over black, dark shadows */
+  --glass-text: #f0f0f2;
+  --glass-panel-bg: linear-gradient(160deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 55%, rgba(255,255,255,0.07) 100%);
+  --glass-panel-border: rgba(255,255,255,0.14);
+  --glass-panel-shadow: 0 0 0 1px rgba(0,0,0,0.6), 0 12px 32px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08);
+  --glass-control-bg: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.09) 100%);
+  --glass-control-border: rgba(255,255,255,0.16);
+  --glass-control-shadow: 0 0 0 1px rgba(0,0,0,0.6), 0 6px 16px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.10);
+  --glass-strong-bg: linear-gradient(135deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.12) 100%);
+  --glass-strong-border: rgba(255,255,255,0.20);
+  --glass-strong-shadow: 0 0 0 1px rgba(0,0,0,0.65), 0 8px 20px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.12);
+  --glass-recording-bg: linear-gradient(135deg, rgba(225,29,72,0.30) 0%, rgba(255,255,255,0.06) 50%, rgba(225,29,72,0.22) 100%);
+  --glass-recording-border: rgba(255,120,140,0.35);
+  --glass-recording-shadow: 0 0 0 1px rgba(225,29,72,0.4), 0 8px 20px rgba(225,29,72,0.3), inset 0 1px 0 rgba(255,255,255,0.10);
+  --glass-scan-overlay: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 32%, rgba(0,0,0,0) 62%);
+
+  /* Chat surfaces in dark mode: flat, solid, sleek (no frosted glass) */
+  --chat-panel-bg: rgb(var(--surface));
+  --chat-panel-border: rgb(var(--border));
+  --chat-panel-shadow: none;
+  --chat-raised-bg: rgb(var(--surface-2));
+  --chat-raised-border: rgb(var(--border));
+  --chat-raised-shadow: none;
+  --chat-control-bg: rgb(var(--surface-2));
+  --chat-control-border: rgb(var(--border));
+  --chat-control-shadow: none;
+  --chat-blur: none;
+
+  /* Wordmark gradient in dark mode: white → vivid blue */
+  --logo-gradient: linear-gradient(120deg, #f8fafc 0%, #dbeafe 28%, #38bdf8 64%, #0ea5e9 100%);
+  --logo-glow: drop-shadow(0 1px 12px rgba(56, 189, 248, 0.45));
+
+  /* Landing hero glass (dark): translucent, keeps the blue glow */
+  --glass-hero-bg: linear-gradient(135deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.05) 48%, rgba(255,255,255,0.10) 100%);
+  --glass-hero-border: rgba(255,255,255,0.18);
+  --glass-hero-shadow: 0 0 0 1px rgba(99,102,241,0.25), 0 14px 34px rgba(59,130,246,0.30), inset 0 1px 0 rgba(255,255,255,0.12);
+  --glass-nav-bg: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
+  --glass-nav-border: rgba(255,255,255,0.12);
+  --glass-nav-shadow: 0 0 0 1px rgba(99,102,241,0.22), 0 12px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
 }
 
 html,
 body {
   background-color: rgb(var(--bg));
   color: rgb(var(--text));
+}
+
+/* The accent blue is accent-700/600 (dark) for contrast on white. On black it
+   looks dull, so brighten accent text to accent-400 in dark mode. */
+.dark .text-accent-700,
+.dark .text-accent-600 {
+  color: rgb(56 189 248 / var(--tw-text-opacity, 1));
 }
 
 .material-symbols-outlined {
@@ -45,8 +133,82 @@ body {
 /* Landing hero wash */
 .hero-wash {
   background:
-    radial-gradient(60% 70% at 12% -5%, rgba(99, 102, 241, 0.14) 0%, transparent 60%),
-    radial-gradient(55% 65% at 100% 0%, rgba(79, 70, 229, 0.12) 0%, transparent 55%);
+    radial-gradient(60% 70% at 12% -5%, rgba(14, 165, 233, 0.14) 0%, transparent 60%),
+    radial-gradient(55% 65% at 100% 0%, rgba(2, 132, 199, 0.12) 0%, transparent 55%);
+}
+
+/* ── Landing: sleek dark / developer aesthetic ─────────────────────── */
+.landing {
+  --grid: rgba(15, 23, 42, 0.055);
+  --aurora-1: rgba(14, 165, 233, 0.16);
+  --aurora-2: rgba(37, 99, 235, 0.12);
+}
+.dark .landing {
+  --grid: rgba(255, 255, 255, 0.05);
+  --aurora-1: rgba(14, 165, 233, 0.18);
+  --aurora-2: rgba(59, 130, 246, 0.14);
+}
+
+/* Faint blueprint grid, faded out toward the edges with a radial mask */
+.landing-grid {
+  background-image:
+    linear-gradient(to right, var(--grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid) 1px, transparent 1px);
+  background-size: 54px 54px;
+  -webkit-mask-image: radial-gradient(ellipse 85% 60% at 50% 0%, #000 35%, transparent 100%);
+  mask-image: radial-gradient(ellipse 85% 60% at 50% 0%, #000 35%, transparent 100%);
+}
+
+/* Soft aurora glows that drift slowly */
+.landing-aurora {
+  background:
+    radial-gradient(42% 48% at 18% 0%, var(--aurora-1), transparent 70%),
+    radial-gradient(44% 50% at 82% 8%, var(--aurora-2), transparent 70%);
+  animation: aurora-drift 18s ease-in-out infinite alternate;
+}
+@keyframes aurora-drift {
+  from { transform: translate3d(0, 0, 0) scale(1); opacity: 0.9; }
+  to   { transform: translate3d(0, -2%, 0) scale(1.06); opacity: 1; }
+}
+
+/* Hairline gradient border used on feature cards */
+.card-hairline {
+  border: 1px solid rgb(var(--border));
+  transition: border-color 0.25s ease, transform 0.25s ease, background-color 0.25s ease;
+}
+.card-hairline:hover {
+  transform: translateY(-3px);
+}
+.dark .card-hairline:hover { border-color: rgba(255, 255, 255, 0.18); }
+.card-hairline:hover { border-color: rgba(15, 23, 42, 0.16); }
+
+/* Gentle float for the hero console */
+@keyframes float-soft {
+  from { transform: translateY(0); }
+  to { transform: translateY(-7px); }
+}
+.float-soft {
+  animation: float-soft 6s ease-in-out infinite alternate;
+}
+@media (prefers-reduced-motion: reduce) {
+  .float-soft { animation: none; }
+}
+
+/* Scroll reveal */
+.reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.7s cubic-bezier(0.2, 0.6, 0.2, 1),
+    transform 0.7s cubic-bezier(0.2, 0.6, 0.2, 1);
+  will-change: opacity, transform;
+}
+.reveal.in {
+  opacity: 1;
+  transform: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .reveal { opacity: 1; transform: none; transition: none; }
+  .landing-aurora { animation: none; }
 }
 
 /* Image scanning animation */
@@ -54,8 +216,8 @@ body {
   position: absolute;
   width: 100%;
   height: 2px;
-  background: rgba(99, 102, 241, 0.7);
-  box-shadow: 0 0 15px 2px rgba(129, 140, 248, 0.8);
+  background: rgba(14, 165, 233, 0.7);
+  box-shadow: 0 0 15px 2px rgba(56, 189, 248, 0.8);
   top: 50%;
   left: 0;
   display: none;

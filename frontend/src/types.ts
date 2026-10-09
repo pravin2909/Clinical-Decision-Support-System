@@ -23,11 +23,21 @@ export interface ClassificationResult {
   all_probabilities: Record<string, number>;
 }
 
+export interface Source {
+  title: string;
+  authors: string;
+  journal: string;
+  year: string;
+  abstract: string;
+  url: string | null;
+}
+
 // Server-Sent Event payloads emitted by the /analyze/*/stream endpoints
 export type StreamEvent =
   | { type: "classification"; routing: RoutingResult; classification: ClassificationResult }
   | { type: "text_start"; symptoms: string }
   | { type: "audio_start"; transcription: string }
+  | { type: "sources"; sources: Source[] }
   | { type: "token"; content: string }
   | { type: "done" }
   | { type: "error"; message: string };

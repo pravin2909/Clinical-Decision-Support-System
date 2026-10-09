@@ -33,15 +33,10 @@ def transcribe_audio(audio_bytes: bytes, filename: str = "audio.wav") -> dict:
             recognizer.adjust_for_ambient_noise(source, duration=0.5)
             audio_data = recognizer.record(source)
 
-        # Use Google free Speech Recognition
-        try:
-            text = recognizer.recognize_google(audio_data)
-        except sr.RequestError as e:
-            if "Forbidden" in str(e) or "403" in str(e):
-                # Google blocks the free tier occasionally; use a fallback text for PoC
-                text = "The patient presents with severe throat irritation, difficulty swallowing, and a low-grade fever that started yesterday."
-            else:
-                raise e
+        # Use Google free Speech Recognition.
+        # NOTE: never substitute fabricated symptom text on failure — inventing
+        # patient input in a clinical tool is unsafe. Surface the error instead.
+        text = recognizer.recognize_google(audio_data)
 
         return {
             "success": True,

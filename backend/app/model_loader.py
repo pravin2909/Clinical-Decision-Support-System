@@ -200,6 +200,24 @@ def load_vit_classifier(model_path: str, num_classes: int, device: torch.device)
     idx_to_class = checkpoint.get('idx_to_class', None)
     classes = checkpoint.get('classes', None)
 
+    # Some checkpoints (e.g. the eye ViT) only store one of the two. Reconstruct
+    # the missing field so downstream code can always index idx_to_class[pred].
+    # ImageFolder orders classes alphabetically, which is the order in `classes`.
+    if idx_to_class is None and classes is not None:
+        idx_to_class = {i: c for i, c in enumerate(classes)}
+    elif classes is None and idx_to_class is not None:
+        classes = [idx_to_class[i] for i in sorted(idx_to_class)]
+
+    if idx_to_class is None:
+        raise ValueError(
+            f"Checkpoint {model_path} has neither 'idx_to_class' nor 'classes'; "
+            "cannot map prediction indices to class names."
+        )
+
+    # Checkpoints may store idx_to_class keys as strings ("0") when round-tripped
+    # through JSON; normalize to int so argmax indices match.
+    idx_to_class = {int(k): v for k, v in idx_to_class.items()}
+
     return model, idx_to_class, classes
 
 

@@ -97,6 +97,26 @@ NORMALIZE_MEAN = [0.485, 0.456, 0.406]
 NORMALIZE_STD = [0.229, 0.224, 0.225]
 
 # ──────────────────────────────────────
+# Database (PostgreSQL) — consultation/report history
+# ──────────────────────────────────────
+# Async SQLAlchemy URL. Local Homebrew Postgres uses trust auth (no password).
+DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql+asyncpg://pravin@localhost:5432/dpt_engine",
+)
+# When false, the app runs fully stateless (no history persisted) even if a URL
+# is set — useful for quick local runs without Postgres available.
+DB_ENABLED = os.getenv("DB_ENABLED", "true").lower() in ("1", "true", "yes", "on")
+
+# ──────────────────────────────────────
+# Authentication (JWT)
+# ──────────────────────────────────────
+# IMPORTANT: set a strong, unique JWT_SECRET in production (e.g. `openssl rand -hex 32`).
+JWT_SECRET = os.getenv("JWT_SECRET", "dev-insecure-change-me")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))  # 24h
+
+# ──────────────────────────────────────
 # LLM Reasoning Backend (OpenAI-compatible: LM Studio, Ollama, vLLM, etc.)
 # ──────────────────────────────────────
 # LM Studio serves an OpenAI-compatible API at http://localhost:1234/v1
@@ -112,64 +132,55 @@ OLLAMA_MODEL = LLM_MODEL
 # ──────────────────────────────────────
 # DPT Report System Prompt
 # ──────────────────────────────────────
-DPT_SYSTEM_PROMPT = """You are a medical clinical decision support system that generates structured DPT (Diagnostic, Prognostic, Therapeutic) reports.
+DPT_SYSTEM_PROMPT = """You are a helpful medical assistant. Explain the condition in clear, general language.
 
-STRICT RULES:
-- Start the report DIRECTLY with the report title. Do NOT begin with "Okay", "Sure", "Here's", or any conversational filler.
-- Do NOT invent or hallucinate dates. Do NOT include any date field.
-- Do NOT ask follow-up questions at the end. The report must be self-contained.
-- Do NOT use phrases like "Do you want me to..." or "Let me know if...".
-- Use professional medical language that is also understandable to patients.
-- Be factual and evidence-based. Do not speculate beyond established medical knowledge.
+RULES:
+- Answer directly and naturally — short paragraphs and simple bullet points. Do NOT use a rigid template or numbered "Diagnosis / Prognosis / Therapy" sections.
+- Start by naming the condition and briefly saying what it is.
+- Then cover, in plain language: common signs and symptoms, how it's usually treated (including common medicines where relevant), simple self-care, and when the person should see a doctor.
+- Be factual and calm. Do NOT overstate severity or jump to worst-case conclusions.
+- No conversational filler ("Sure", "Here's"), no dates, no follow-up questions at the end.
+- Keep it concise and easy to read."""
 
-OUTPUT FORMAT (follow this exactly):
+# Below this classifier confidence (%), a finding is treated as uncertain: the
+# report is framed as a low-confidence possibility rather than a likely finding.
+CONFIDENCE_UNCERTAIN_THRESHOLD = float(os.getenv("CONFIDENCE_UNCERTAIN_THRESHOLD", "55"))
 
-# DPT Clinical Report: [Condition Name]
+DPT_IMAGE_PROMPT_TEMPLATE = """A medical image was analyzed and the most likely finding is:
 
-**Detected Condition:** [Name]
-**Medical Domain:** [Ophthalmology / Dentistry / Dermatology]
+- Condition: {disease}
+- Confidence: {confidence:.1f}%
+- Area: {domain_full}
+{caution}
+Explain this condition in general terms: what it is, common symptoms, how it's usually treated, and when to see a doctor."""
 
-> ⚠️ DISCLAIMER: This report is AI-generated and intended for informational purposes only. It does not constitute medical advice. Always consult a qualified healthcare professional for diagnosis and treatment.
+# Appended to the image prompt when classifier confidence is below the threshold.
+LOW_CONFIDENCE_CAUTION = (
+    "\nNOTE: the image classifier's confidence is LOW, so this finding is uncertain. "
+    "Make clear up front that this is only a possibility, not a confident finding, and "
+    "that an in-person clinical assessment is needed to confirm.\n"
+)
 
----
-
-## 1. DIAGNOSIS
-- Clinical definition of the condition
-- Key visual/clinical characteristics
-- Common symptoms patients experience
-- Standard diagnostic methods and procedures
-- Differential diagnoses to consider
-
-## 2. PROGNOSIS
-- Natural progression of the condition (untreated)
-- Expected outcomes with timely treatment
-- Severity classification (mild / moderate / severe)
-- Risk factors that worsen the prognosis
-- Potential complications if left untreated
-
-## 3. THERAPY
-- First-line treatment options
-- Medications (with generic names)
-- Surgical or procedural interventions if applicable
-- Lifestyle modifications and home care
-- Preventive measures to avoid recurrence
-- Red flags that require immediate specialist referral
-
----
-End the report with a brief clinical summary in 2-3 sentences. Nothing else after that."""
-
-DPT_IMAGE_PROMPT_TEMPLATE = """An AI-powered medical image analysis system has classified a patient's uploaded image.
-
-CLASSIFICATION RESULTS:
-- Detected Condition: {disease}
-- Confidence Score: {confidence:.1f}%
-- Image Domain: {domain_full}
-
-Generate a DPT clinical report for this condition. Follow the system format strictly."""
-
-DPT_TEXT_PROMPT_TEMPLATE = """A patient has described the following symptoms:
+DPT_TEXT_PROMPT_TEMPLATE = """Someone described the following:
 
 "{symptoms}"
 
-Analyze these symptoms, identify the most likely condition(s), and generate a DPT clinical report. Follow the system format strictly."""
+Explain in general terms the most likely condition(s), and what can typically be done about it — common treatments, self-care, and when to see a doctor. Keep it general and avoid alarming conclusions."""
+
+
+# ──────────────────────────────────────
+# Doctor Mode — evidence-grounded, cited answers
+# ──────────────────────────────────────
+DOCTOR_SYSTEM_PROMPT = """You are an evidence-based clinical research assistant for physicians.
+
+STRICT RULES:
+- Answer ONLY using the retrieved evidence provided in the user message. Do NOT rely on prior memory or invent facts.
+- Cite every clinical claim inline with [n] matching the numbered sources (e.g., "first-line therapy is X [1][3]").
+- If the evidence does not address part of the question, state that explicitly. Do NOT speculate or fabricate.
+- Use precise clinical terminology appropriate for a physician.
+- Be concise and well structured: short bold headings and bullet points (e.g., First-line options, Dosing where supported, Cautions/contraindications, When to escalate).
+- Do NOT give a definitive patient-specific diagnosis; frame the response as an evidence summary to support the clinician's judgment.
+- Do NOT add a disclaimer section and do NOT restate the question. Begin directly with the answer.
+- Do NOT output a "Sources" list yourself; the application renders citations separately."""
+
 

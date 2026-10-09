@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { Link, NavLink, Outlet } from "react-router-dom";
+import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
+import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import Logo, { LogoMark } from "../components/Logo";
 
 interface NavItem {
@@ -15,7 +16,37 @@ const NAV: NavItem[] = [
   { to: "/app/settings", label: "Settings", icon: "settings" },
 ];
 
-const VERSION = "v0.0.1";
+/* Shared glass surfaces — colors come from CSS variables so they flip in dark mode */
+const glassPanel: CSSProperties = {
+  background: "var(--glass-panel-bg)",
+  border: "1px solid var(--glass-panel-border)",
+  backdropFilter: "blur(22px) saturate(180%)",
+  WebkitBackdropFilter: "blur(22px) saturate(180%)",
+  boxShadow: "var(--glass-panel-shadow)",
+};
+
+const glassControl: CSSProperties = {
+  background: "var(--glass-control-bg)",
+  border: "1px solid var(--glass-control-border)",
+  backdropFilter: "blur(18px) saturate(190%)",
+  WebkitBackdropFilter: "blur(18px) saturate(190%)",
+  boxShadow: "var(--glass-control-shadow)",
+};
+
+const glassActive: CSSProperties = {
+  background: "var(--glass-strong-bg)",
+  border: "1px solid var(--glass-strong-border)",
+  backdropFilter: "blur(18px) saturate(190%)",
+  WebkitBackdropFilter: "blur(18px) saturate(190%)",
+  boxShadow: "var(--glass-strong-shadow)",
+};
+
+/* Apple style type: San Francisco on Apple devices, clean fallbacks elsewhere */
+const appleFont: CSSProperties = {
+  fontFamily:
+    '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Inter, "Segoe UI", Roboto, Arial, sans-serif',
+  letterSpacing: "-0.01em",
+};
 
 function loadCollapsed(): boolean {
   try {
@@ -25,61 +56,98 @@ function loadCollapsed(): boolean {
   }
 }
 
-function Sidebar({ collapsed }: { collapsed: boolean }) {
-  const linkBase =
-    "flex items-center gap-3 rounded-lg text-sm font-semibold transition-colors " +
-    (collapsed ? "justify-center px-0 py-3" : "px-3 py-2.5");
+function ToggleButton({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+  return (
+    <button
+      onClick={onToggle}
+      title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+      style={glassControl}
+      className="size-8 shrink-0 rounded-lg text-accent-700 flex items-center justify-center transition-all hover:brightness-105 hover:-translate-y-0.5"
+    >
+      <span className="material-symbols-outlined text-lg">{collapsed ? "menu" : "menu_open"}</span>
+    </button>
+  );
+}
 
+function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
   return (
     <aside
       className={
-        "hidden md:flex shrink-0 flex-col bg-surface border-r border-line transition-all duration-200 " +
-        (collapsed ? "w-20" : "w-64")
+        "hidden md:flex shrink-0 flex-col bg-app border-r border-line transition-all duration-300 " +
+        (collapsed ? "w-16" : "w-56")
       }
     >
-      <Link
-        to="/"
-        className={"flex items-center h-16 " + (collapsed ? "justify-center px-0" : "px-5")}
-      >
-        {collapsed ? <LogoMark className="size-9" /> : <Logo />}
-      </Link>
+      {collapsed ? (
+        <div className="flex flex-col items-center gap-3 pt-4">
+          <Link to="/" title="MedCore">
+            <LogoMark className="text-xl" />
+          </Link>
+          <ToggleButton collapsed={collapsed} onToggle={onToggle} />
+        </div>
+      ) : (
+        <div className="flex items-center justify-between h-14 px-4">
+          <Link to="/" className="flex items-center">
+            <Logo />
+          </Link>
+          <ToggleButton collapsed={collapsed} onToggle={onToggle} />
+        </div>
+      )}
 
-      <nav className="flex-1 px-3 py-4 space-y-1">
+      <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto">
+        {!collapsed && (
+          <p className="px-3 pt-1 pb-2 text-[11px] font-semibold uppercase tracking-wider text-muted">
+            Menu
+          </p>
+        )}
         {NAV.map((item) => (
           <NavLink
             key={item.to}
             to={item.to}
             end={item.end}
             title={collapsed ? item.label : undefined}
-            className={({ isActive }) =>
-              linkBase +
-              " backdrop-blur-sm" +
-              (isActive
-                ? " bg-accent-500/15 text-accent-700 dark:text-accent-300 ring-1 ring-accent-500/25 shadow-[0_2px_10px_rgba(99,102,241,0.15)]"
-                : " text-muted hover:bg-content/5 hover:text-content")
-            }
           >
-            <span className="material-symbols-outlined text-xl">{item.icon}</span>
-            {!collapsed && item.label}
+            {({ isActive }) => (
+              <span
+                style={isActive ? glassControl : undefined}
+                className={
+                  "flex items-center gap-3 rounded-xl transition-all " +
+                  (collapsed ? "justify-center p-2.5 " : "px-3 py-2.5 ") +
+                  (isActive ? "" : "hover:bg-black/5 dark:hover:bg-white/5")
+                }
+              >
+                <span className="material-symbols-outlined text-[22px] leading-none text-accent-600">
+                  {item.icon}
+                </span>
+                {!collapsed && (
+                  <span
+                    className={
+                      "truncate text-[15px] " +
+                      (isActive ? "font-semibold text-content" : "font-medium text-muted")
+                    }
+                  >
+                    {item.label}
+                  </span>
+                )}
+              </span>
+            )}
           </NavLink>
         ))}
       </nav>
 
-      {/* Profile */}
-      <div className="p-3">
+      <div className="p-2 border-t border-line/60">
         <button
           title="Profile"
           className={
-            "w-full flex items-center rounded-xl hover:bg-surface2 transition-colors " +
-            (collapsed ? "justify-center p-2" : "gap-3 p-2.5")
+            "w-full flex items-center rounded-xl transition-all hover:bg-black/5 dark:hover:bg-white/5 " +
+            (collapsed ? "justify-center p-2" : "gap-3 p-2")
           }
         >
-          <span className="size-9 shrink-0 rounded-full bg-accent-600 text-white flex items-center justify-center font-bold text-sm">
+          <span className="size-9 shrink-0 rounded-full bg-accent-600 text-white flex items-center justify-center font-semibold text-xs">
             DR
           </span>
           {!collapsed && (
             <span className="min-w-0 text-left">
-              <span className="block text-sm font-bold text-content truncate">Dr. User</span>
+              <span className="block text-sm font-semibold text-content truncate">Dr. User</span>
               <span className="block text-xs text-muted truncate">Clinician</span>
             </span>
           )}
@@ -90,20 +158,39 @@ function Sidebar({ collapsed }: { collapsed: boolean }) {
 }
 
 function MobileTopNav() {
+  const activeStyle = (isActive: boolean) => (isActive ? glassActive : undefined);
+  const linkClass = ({ isActive }: { isActive: boolean }) =>
+    "rounded-xl transition-all " + (isActive ? "text-accent-700" : "text-muted");
+
   return (
-    <div className="md:hidden flex items-center justify-between px-4 h-14 bg-surface border-b border-line">
+    <div
+      style={glassPanel}
+      className="md:hidden flex items-center justify-between m-3 mb-0 px-3 h-14 rounded-2xl"
+    >
       <Link to="/">
         <Logo markClassName="size-7" textClassName="text-content !text-base" />
       </Link>
-      <div className="flex items-center gap-3 text-sm font-semibold">
-        <NavLink to="/app" end className={({ isActive }) => (isActive ? "text-accent-600" : "text-muted")}>
-          Home
+      <div className="flex items-center gap-1 text-sm font-semibold">
+        <NavLink to="/app" end className={linkClass}>
+          {({ isActive }) => (
+            <span style={activeStyle(isActive)} className="block px-3 py-1.5 rounded-xl">
+              Home
+            </span>
+          )}
         </NavLink>
-        <NavLink to="/app/diagnosis" className={({ isActive }) => (isActive ? "text-accent-600" : "text-muted")}>
-          Diagnosis
+        <NavLink to="/app/diagnosis" className={linkClass}>
+          {({ isActive }) => (
+            <span style={activeStyle(isActive)} className="block px-3 py-1.5 rounded-xl">
+              Diagnosis
+            </span>
+          )}
         </NavLink>
-        <NavLink to="/app/settings" className={({ isActive }) => (isActive ? "text-accent-600" : "text-muted")}>
-          Settings
+        <NavLink to="/app/settings" className={linkClass}>
+          {({ isActive }) => (
+            <span style={activeStyle(isActive)} className="block px-3 py-1.5 rounded-xl">
+              Settings
+            </span>
+          )}
         </NavLink>
       </div>
     </div>
@@ -112,36 +199,34 @@ function MobileTopNav() {
 
 export default function DashboardLayout() {
   const [collapsed, setCollapsed] = useState(loadCollapsed);
+  const { pathname } = useLocation();
+  const onChat = pathname.startsWith("/app/diagnosis");
+
+  /* Give the chat page the full width, then restore the saved choice on other pages */
+  useEffect(() => {
+    setCollapsed(onChat ? true : loadCollapsed());
+  }, [onChat]);
 
   const toggle = () => {
     setCollapsed((c) => {
       const next = !c;
-      try {
-        localStorage.setItem("medcore.sidebar", next ? "collapsed" : "expanded");
-      } catch {
-        /* ignore */
+      /* Only remember the choice made on normal pages */
+      if (!onChat) {
+        try {
+          localStorage.setItem("medcore.sidebar", next ? "collapsed" : "expanded");
+        } catch {
+          /* ignore */
+        }
       }
       return next;
     });
   };
 
   return (
-    <div className="min-h-screen flex bg-surface">
-      <Sidebar collapsed={collapsed} />
+    <div style={appleFont} className="h-screen overflow-hidden flex bg-surface antialiased">
+      <Sidebar collapsed={collapsed} onToggle={toggle} />
       <div className="flex-1 flex flex-col min-w-0">
         <MobileTopNav />
-        <header className="hidden md:flex items-center justify-between px-6 h-16 bg-surface">
-          <button
-            onClick={toggle}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            className="size-9 rounded-lg hover:bg-surface2 text-muted flex items-center justify-center transition-colors"
-          >
-            <span className="material-symbols-outlined">{collapsed ? "menu" : "menu_open"}</span>
-          </button>
-          <span className="text-xs font-semibold text-muted bg-surface2 px-2.5 py-1 rounded-full">
-            {VERSION}
-          </span>
-        </header>
         <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>

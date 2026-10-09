@@ -8,6 +8,15 @@ SpeechRecognition>=3.10.0
 python-multipart>=0.0.9
 python-dotenv>=1.0.0
 
+# Database (PostgreSQL) — consultation/report history
+SQLAlchemy[asyncio]>=2.0.0
+asyncpg>=0.29.0
+
+# Auth (JWT + password hashing)
+PyJWT>=2.8.0
+bcrypt>=4.1.0
+email-validator>=2.0.0
+
 # PyAudio is only needed for live microphone capture (not file transcription).
 # It requires the portaudio system library (macOS: `brew install portaudio`).
 # Uncomment if you need microphone input:

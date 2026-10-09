@@ -10,7 +10,14 @@ from PIL import Image
 from app.config import (
     MOBILENET_PATH, VIT_CONFIGS,
     DPT_IMAGE_PROMPT_TEMPLATE, DPT_TEXT_PROMPT_TEMPLATE,
+    CONFIDENCE_UNCERTAIN_THRESHOLD, LOW_CONFIDENCE_CAUTION,
 )
+
+DOMAIN_FULL_NAMES = {
+    "eye": "Ophthalmology (Eye)",
+    "dental": "Dentistry (Oral Health)",
+    "skin": "Dermatology (Skin)",
+}
 from app.model_loader import (
     load_mobilenet_router, load_vit_classifier,
     get_mobilenet_transform, get_vit_transform,
@@ -136,12 +143,25 @@ class DPTPipeline:
         clean_labels = VIT_CONFIGS[domain].get("clean_labels", {})
         clean_name = self._find_clean_label(pred_class, clean_labels)
 
+        confidence_pct = round(pred_conf * 100, 2)
         return {
             "disease": clean_name,
             "raw_class": pred_class,
-            "confidence": round(pred_conf * 100, 2),
+            "confidence": confidence_pct,
+            "uncertain": confidence_pct < CONFIDENCE_UNCERTAIN_THRESHOLD,
             "all_probabilities": all_probs,
         }
+
+    def build_image_prompt(self, routing: dict, classification: dict) -> str:
+        """Build the LLM prompt for an image finding, flagging low confidence."""
+        caution = LOW_CONFIDENCE_CAUTION if classification.get("uncertain") else ""
+        return DPT_IMAGE_PROMPT_TEMPLATE.format(
+            domain=routing["domain"],
+            disease=classification["disease"],
+            confidence=classification["confidence"],
+            domain_full=DOMAIN_FULL_NAMES.get(routing["domain"], routing["domain"]),
+            caution=caution,
+        )
 
     def _find_clean_label(self, raw_class: str, clean_labels: dict) -> str:
         """Map raw folder-name class to a clean medical label."""
@@ -176,18 +196,7 @@ class DPTPipeline:
             return {"error": classification["error"]}
 
         # Step 3: Generate DPT report
-        domain_full_names = {
-            "eye": "Ophthalmology (Eye)",
-            "dental": "Dentistry (Oral Health)",
-            "skin": "Dermatology (Skin)",
-        }
-
-        prompt = DPT_IMAGE_PROMPT_TEMPLATE.format(
-            domain=domain,
-            disease=classification["disease"],
-            confidence=classification["confidence"],
-            domain_full=domain_full_names.get(domain, domain),
-        )
+        prompt = self.build_image_prompt(routing, classification)
 
         report = await generate_dpt_report(prompt)
 

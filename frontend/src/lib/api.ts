@@ -1,4 +1,5 @@
 import type { StreamEvent } from "../types";
+import { apiUrl } from "./config";
 
 /**
  * Parse a fetch Response body as Server-Sent Events, yielding each parsed
@@ -31,8 +32,8 @@ export async function* streamSSE(res: Response): AsyncGenerator<StreamEvent> {
   }
 }
 
-async function postStream(url: string, body: BodyInit, headers?: HeadersInit): Promise<Response> {
-  const res = await fetch(url, { method: "POST", body, headers });
+async function postStream(path: string, body: BodyInit, headers?: HeadersInit): Promise<Response> {
+  const res = await fetch(apiUrl(path), { method: "POST", body, headers });
   if (!res.ok) throw new Error("Server error: " + res.statusText);
   return res;
 }
@@ -55,4 +56,12 @@ export function analyzeAudioStream(audio: Blob): Promise<Response> {
   const form = new FormData();
   form.append("file", audio, "recording.wav");
   return postStream("/analyze/audio/stream", form);
+}
+
+export function analyzeDoctorStream(question: string): Promise<Response> {
+  const body = new URLSearchParams();
+  body.append("question", question);
+  return postStream("/analyze/doctor/stream", body, {
+    "Content-Type": "application/x-www-form-urlencoded",
+  });
 }

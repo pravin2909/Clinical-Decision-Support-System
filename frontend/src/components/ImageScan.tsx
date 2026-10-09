@@ -12,9 +12,8 @@ const BADGE: Record<PipelineState["liveStatus"], { cls: string; text: string; pu
   complete: { cls: "bg-brand-500", text: "ANALYSIS COMPLETE", pulse: false },
 };
 
-// Light gradient so the dark status text stays readable over an uploaded image.
-const PREVIEW_OVERLAY =
-  "linear-gradient(to top, rgba(255,255,255,0.94) 0%, rgba(255,255,255,0.4) 32%, rgba(255,255,255,0) 62%)";
+// Fade so the status text stays readable over an uploaded image (flips in dark mode).
+const PREVIEW_OVERLAY = "var(--glass-scan-overlay)";
 
 export default function ImageScan({ state, onFile }: ImageScanProps) {
   const inputRef = useRef<HTMLInputElement>(null);

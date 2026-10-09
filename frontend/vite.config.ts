@@ -1,18 +1,20 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import react from "@vitejs/plugin-react";
 
-// Backend (FastAPI) runs on :8000. Proxy API routes so the frontend can use
-// relative URLs (e.g. fetch('/analyze/text/stream')) exactly like before.
-const API_TARGET = "http://localhost:8000";
-
-export default defineConfig({
-  plugins: [react()],
-  server: {
-    port: 5173,
-    proxy: {
-      "/analyze": { target: API_TARGET, changeOrigin: true },
-      "/health": { target: API_TARGET, changeOrigin: true },
-      "/models": { target: API_TARGET, changeOrigin: true },
+// Frontend and backend run as two separate services on two ports.
+// The frontend talks to the backend directly via VITE_API_BASE_URL
+// (see .env / .env.example), so no dev proxy is needed.
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), "");
+  return {
+    plugins: [react()],
+    server: {
+      port: Number(env.FRONTEND_PORT ?? 5173),
+      strictPort: true,
     },
-  },
+    preview: {
+      port: Number(env.FRONTEND_PORT ?? 5173),
+      strictPort: true,
+    },
+  };
 });

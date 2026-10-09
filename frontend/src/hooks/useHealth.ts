@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { HealthResponse } from "../types";
+import { apiUrl } from "../lib/config";
 
 /** Polls the backend /health endpoint for live system status. */
 export function useHealth(intervalMs = 15000) {
@@ -10,7 +11,7 @@ export function useHealth(intervalMs = 15000) {
     let active = true;
     const load = async () => {
       try {
-        const res = await fetch("/health");
+        const res = await fetch(apiUrl("/health"));
         const data = (await res.json()) as HealthResponse;
         if (active) setHealth(data);
       } catch {
