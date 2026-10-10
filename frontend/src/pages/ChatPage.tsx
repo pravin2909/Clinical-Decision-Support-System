@@ -319,7 +319,7 @@ export default function ChatPage() {
           <button
             onClick={newChat}
             style={glassControl}
-            className={"flex items-center justify-center gap-1.5 text-sm font-semibold text-content px-3 py-1.5 rounded-lg " + lift}
+            className="flex items-center justify-center gap-1.5 text-sm font-semibold text-content px-3 py-1.5 rounded-lg hover:brightness-110 disabled:opacity-50"
           >
             <span className="material-symbols-outlined text-base text-accent-700">add</span>
             New chat
@@ -338,7 +338,7 @@ export default function ChatPage() {
               onClick={() => setActiveId(t.id)}
               style={t.id === activeId ? glassStrong : undefined}
               className={
-                "group flex items-center gap-2.5 px-3 py-2.5 rounded-2xl cursor-pointer text-sm transition-all " +
+                "group flex items-center gap-2.5 px-3 py-2.5 rounded-2xl cursor-pointer text-sm " +
                 (t.id === activeId
                   ? "text-content font-semibold"
                   : "text-muted hover:bg-black/5 dark:hover:bg-white/5 hover:text-content")
@@ -474,7 +474,7 @@ function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => voi
       onClick={() => onChange(m)}
       style={mode === m ? glassStrong : undefined}
       className={
-        "flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-sm font-semibold transition-all " +
+        "flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-sm font-semibold " +
         (mode === m ? "text-accent-700" : "text-muted hover:text-content")
       }
     >

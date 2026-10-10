@@ -161,8 +161,7 @@ function Hero() {
 
         <Reveal delay={120}>
           <p className="mt-6 text-lg text-muted max-w-2xl mx-auto leading-relaxed">
-            A multimodal engine that reads medical images, symptom text or voice and returns a structured{" "}
-            <span className="text-content font-medium">Diagnostic, Prognostic and Therapeutic</span> report,
+            A multimodal engine that reads medical images, symptom text or voice and returns a structured report,
             powered by domain trained vision transformers and a private, local reasoning model.
           </p>
         </Reveal>

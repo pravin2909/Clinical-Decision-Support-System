@@ -61,20 +61,20 @@
   --text-muted: 158 158 165;
   --border: 44 44 48;
 
-  /* Glass surfaces (dark): translucent light tint over black, dark shadows */
+  /* Dark mode: no frosted glass anywhere — flat solid surfaces + hairline borders */
   --glass-text: #f0f0f2;
-  --glass-panel-bg: linear-gradient(160deg, rgba(255,255,255,0.10) 0%, rgba(255,255,255,0.04) 55%, rgba(255,255,255,0.07) 100%);
-  --glass-panel-border: rgba(255,255,255,0.14);
-  --glass-panel-shadow: 0 0 0 1px rgba(0,0,0,0.6), 0 12px 32px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.08);
-  --glass-control-bg: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, rgba(255,255,255,0.05) 50%, rgba(255,255,255,0.09) 100%);
-  --glass-control-border: rgba(255,255,255,0.16);
-  --glass-control-shadow: 0 0 0 1px rgba(0,0,0,0.6), 0 6px 16px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.10);
-  --glass-strong-bg: linear-gradient(135deg, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.12) 100%);
-  --glass-strong-border: rgba(255,255,255,0.20);
-  --glass-strong-shadow: 0 0 0 1px rgba(0,0,0,0.65), 0 8px 20px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.12);
-  --glass-recording-bg: linear-gradient(135deg, rgba(225,29,72,0.30) 0%, rgba(255,255,255,0.06) 50%, rgba(225,29,72,0.22) 100%);
-  --glass-recording-border: rgba(255,120,140,0.35);
-  --glass-recording-shadow: 0 0 0 1px rgba(225,29,72,0.4), 0 8px 20px rgba(225,29,72,0.3), inset 0 1px 0 rgba(255,255,255,0.10);
+  --glass-panel-bg: rgb(var(--surface));
+  --glass-panel-border: rgb(var(--border));
+  --glass-panel-shadow: none;
+  --glass-control-bg: rgb(var(--surface-2));
+  --glass-control-border: rgb(var(--border));
+  --glass-control-shadow: none;
+  --glass-strong-bg: rgb(var(--surface-2));
+  --glass-strong-border: rgb(var(--border));
+  --glass-strong-shadow: none;
+  --glass-recording-bg: rgb(var(--surface-2));
+  --glass-recording-border: rgba(225, 29, 72, 0.4);
+  --glass-recording-shadow: none;
   --glass-scan-overlay: linear-gradient(to top, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0.4) 32%, rgba(0,0,0,0) 62%);
 
   /* Chat surfaces in dark mode: flat, solid, sleek (no frosted glass) */

@@ -1,7 +1,8 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
 import Logo, { LogoMark } from "../components/Logo";
+import SettingsModal from "../components/SettingsModal";
 
 interface NavItem {
   to: string;
@@ -13,7 +14,6 @@ interface NavItem {
 const NAV: NavItem[] = [
   { to: "/app", label: "Overview", icon: "dashboard", end: true },
   { to: "/app/diagnosis", label: "General Diagnosis", icon: "stethoscope" },
-  { to: "/app/settings", label: "Settings", icon: "settings" },
 ];
 
 /* Shared glass surfaces — colors come from CSS variables so they flip in dark mode */
@@ -69,7 +69,32 @@ function ToggleButton({ collapsed, onToggle }: { collapsed: boolean; onToggle: (
   );
 }
 
-function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => void }) {
+function Sidebar({
+  collapsed,
+  onToggle,
+  onOpenSettings,
+}: {
+  collapsed: boolean;
+  onToggle: () => void;
+  onOpenSettings: () => void;
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const { pathname } = useLocation();
+
+  // Close the account menu on navigation.
+  useEffect(() => setMenuOpen(false), [pathname]);
+
+  // Close on outside click.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, [menuOpen]);
+
   return (
     <aside
       className={
@@ -105,12 +130,13 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
             to={item.to}
             end={item.end}
             title={collapsed ? item.label : undefined}
+            className="block"
           >
             {({ isActive }) => (
               <span
                 style={isActive ? glassControl : undefined}
                 className={
-                  "flex items-center gap-3 rounded-xl transition-all " +
+                  "flex items-center gap-3 rounded-xl " +
                   (collapsed ? "justify-center p-2.5 " : "px-3 py-2.5 ") +
                   (isActive ? "" : "hover:bg-black/5 dark:hover:bg-white/5")
                 }
@@ -134,11 +160,49 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
         ))}
       </nav>
 
-      <div className="p-2 border-t border-line/60">
+      <div ref={menuRef} className="relative p-2 border-t border-line/60">
+        {menuOpen && (
+          <div
+            style={glassPanel}
+            className={
+              "absolute z-20 rounded-xl p-1.5 shadow-2xl animate-fade-in " +
+              (collapsed ? "left-full bottom-2 ml-2 w-56" : "left-2 right-2 bottom-full mb-2")
+            }
+          >
+            <button
+              type="button"
+              onClick={() => {
+                setMenuOpen(false);
+                onOpenSettings();
+              }}
+              className="block w-full text-left"
+            >
+              <span className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-content hover:bg-black/5 dark:hover:bg-white/5">
+                <span className="material-symbols-outlined text-[20px] text-muted">settings</span>
+                Settings
+              </span>
+            </button>
+            <Link to="/" onClick={() => setMenuOpen(false)} className="block">
+              <span className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-content hover:bg-black/5 dark:hover:bg-white/5">
+                <span className="material-symbols-outlined text-[20px] text-muted">help</span>
+                Get help
+              </span>
+            </Link>
+            <div className="my-1.5 border-t border-line" />
+            <Link to="/" onClick={() => setMenuOpen(false)} className="block">
+              <span className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-rose-500 hover:bg-rose-500/10">
+                <span className="material-symbols-outlined text-[20px]">logout</span>
+                Log out
+              </span>
+            </Link>
+          </div>
+        )}
         <button
-          title="Profile"
+          type="button"
+          onClick={() => setMenuOpen((o) => !o)}
+          title="Account"
           className={
-            "w-full flex items-center rounded-xl transition-all hover:bg-black/5 dark:hover:bg-white/5 " +
+            "w-full flex items-center rounded-xl hover:bg-black/5 dark:hover:bg-white/5 " +
             (collapsed ? "justify-center p-2" : "gap-3 p-2")
           }
         >
@@ -146,10 +210,15 @@ function Sidebar({ collapsed, onToggle }: { collapsed: boolean; onToggle: () => 
             DR
           </span>
           {!collapsed && (
-            <span className="min-w-0 text-left">
-              <span className="block text-sm font-semibold text-content truncate">Dr. User</span>
-              <span className="block text-xs text-muted truncate">Clinician</span>
-            </span>
+            <>
+              <span className="min-w-0 flex-1 text-left">
+                <span className="block text-sm font-semibold text-content truncate">Dr. User</span>
+                <span className="block text-xs text-muted truncate">Clinician</span>
+              </span>
+              <span className="material-symbols-outlined text-lg text-muted shrink-0">
+                {menuOpen ? "expand_more" : "expand_less"}
+              </span>
+            </>
           )}
         </button>
       </div>
@@ -199,6 +268,7 @@ function MobileTopNav() {
 
 export default function DashboardLayout() {
   const [collapsed, setCollapsed] = useState(loadCollapsed);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const { pathname } = useLocation();
   const onChat = pathname.startsWith("/app/diagnosis");
 
@@ -224,13 +294,14 @@ export default function DashboardLayout() {
 
   return (
     <div style={appleFont} className="h-screen overflow-hidden flex bg-surface antialiased">
-      <Sidebar collapsed={collapsed} onToggle={toggle} />
+      <Sidebar collapsed={collapsed} onToggle={toggle} onOpenSettings={() => setSettingsOpen(true)} />
       <div className="flex-1 flex flex-col min-w-0">
         <MobileTopNav />
         <main className="flex-1 overflow-y-auto">
           <Outlet />
         </main>
       </div>
+      <SettingsModal open={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

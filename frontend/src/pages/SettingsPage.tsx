@@ -86,7 +86,7 @@ function ThemeToggle() {
       onClick={() => choose(t)}
       style={theme === t ? glassActive : undefined}
       className={
-        "flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all " +
+        "flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-lg text-xs font-semibold " +
         (theme === t ? "text-accent-700" : "text-muted hover:text-content")
       }
     >
