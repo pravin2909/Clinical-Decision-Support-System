@@ -1,0 +1,123 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Local development stack for the DPT Clinical Decision Support Engine.
+#
+#   docker compose -f infra/docker-compose.yml up -d        # start data services
+#   docker compose -f infra/docker-compose.yml up -d backend # + the API
+#
+# Each stateful service is a container with a named volume so data survives
+# restarts. Ports are chosen to avoid clashing with services you may already run
+# natively on the host:
+#   - Postgres is published on host :5433 (your native Postgres keeps :5432)
+#   - Redis :6379, MinIO :9000/:9001, Mongo :27017
+#
+# Inside the compose network, services talk to each other by name
+# (e.g. the API reaches Postgres at `postgres:5432`), regardless of host ports.
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: dpt
+
+services:
+  postgres:
+    # pgvector image = Postgres 16 with the pgvector extension available, so the
+    # RAG work in Phase 3 needs no separate vector database.
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-dpt}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dpt}
+      POSTGRES_DB: ${POSTGRES_DB:-dpt_engine}
+    ports:
+      - "5433:5432"
+    volumes:
+      - pg_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dpt} -d ${POSTGRES_DB:-dpt_engine}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    # One Redis instance plays three roles in this project: cache, rate-limiter
+    # store, and (later) Celery broker. Good learning surface, one container.
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    # S3-compatible object storage for images and PDFs. Never store blobs in
+    # Postgres; store them here and keep only signed URIs in the DB.
+    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    command: ["server", "/data", "--console-address", ":9001"]
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minio12345}
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # web console
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mongo:
+    # Scoped use only (chat logs / AI traces). Postgres stays the source of
+    # truth for all relational and clinical data.
+    image: mongo:7
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-dpt}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-dpt}
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    # The API itself. Heavy image (PyTorch); start it only when you want the full
+    # stack containerized — during development you can also run it on the host.
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-dpt}:${POSTGRES_PASSWORD:-dpt}@postgres:5432/${POSTGRES_DB:-dpt_engine}
+      REDIS_URL: redis://redis:6379/0
+      MINIO_ENDPOINT: minio:9000
+      MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minio}
+      MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minio12345}
+      MONGO_URL: mongodb://${MONGO_USER:-dpt}:${MONGO_PASSWORD:-dpt}@mongo:27017
+      # The LLM runs on the host (LM Studio/Ollama); reach it from the container
+      # via host.docker.internal rather than localhost.
+      LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:1234/v1}
+      JWT_SECRET: ${JWT_SECRET:-dev-insecure-change-me}
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    profiles:
+      # Not started by a bare `up`; bring it up explicitly with `up backend`.
+      - full
+
+volumes:
+  pg_data:
+  redis_data:
+  minio_data:
+  mongo_data:

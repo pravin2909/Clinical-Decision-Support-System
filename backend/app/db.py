@@ -46,11 +46,19 @@ async def init_db() -> bool:
         engine = create_async_engine(DATABASE_URL, pool_pre_ping=True, echo=False)
         SessionLocal = async_sessionmaker(engine, expire_on_commit=False)
 
-        # Import models so they register on Base.metadata before create_all.
-        from app import models_db  # noqa: F401
+        # Schema is managed by Alembic migrations, NOT auto-created here. On a
+        # fresh database run `alembic upgrade head` (from backend/) first. We
+        # only verify connectivity at startup and warn if the schema is missing.
+        from sqlalchemy import text
 
         async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
+            await conn.exec_driver_sql("SELECT 1")
+            has_users = await conn.scalar(
+                text("SELECT to_regclass('public.users') IS NOT NULL")
+            )
+
+        if not has_users:
+            print("  ⚠️  Connected, but tables are missing. Run: alembic upgrade head")
 
         db_ready = True
         print("  ✓ Database connected — consultation history enabled.")

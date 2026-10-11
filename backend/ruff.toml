@@ -1,0 +1,15 @@
+# Lint config. Conservative to start: pyflakes (F) catches real bugs (unused
+# names, undefined refs); pycodestyle (E) catches style issues. E501 (line
+# length) is ignored for now because the existing prompt templates are long —
+# tighten later rather than churn those files now.
+
+line-length = 100
+
+[lint]
+select = ["E", "F"]
+ignore = ["E501"]
+
+[lint.per-file-ignores]
+# These modules intentionally import after some top-of-file setup.
+"alembic/env.py" = ["E402"]
+"app/pipeline.py" = ["E402"]

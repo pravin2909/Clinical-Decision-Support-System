@@ -1,0 +1,15 @@
+# Keep the build context small and the image clean.
+.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyo
+.env
+.env.*
+!.env.example
+uploads/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+*.log
+.DS_Store

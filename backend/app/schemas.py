@@ -28,6 +28,17 @@ class RegisterRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    # Present on login/refresh. The current frontend ignores it until it wires
+    # auto-refresh; adding it is backward-compatible.
+    refresh_token: str | None = None
+
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+
+
+class LogoutRequest(BaseModel):
+    refresh_token: str
 
 
 class AssignmentRequest(BaseModel):

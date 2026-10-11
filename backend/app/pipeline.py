@@ -23,7 +23,7 @@ from app.model_loader import (
     get_mobilenet_transform, get_vit_transform,
     load_image_from_bytes,
 )
-from app.reasoning import generate_dpt_report, generate_dpt_report_stream, check_ollama_status
+from app.reasoning import generate_dpt_report
 from app.speech import transcribe_audio
 
 

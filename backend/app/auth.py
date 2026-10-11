@@ -7,6 +7,8 @@ Authentication & authorization utilities.
   and require_role(...) for role-gated endpoints.
 """
 
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 
 import bcrypt
@@ -16,9 +18,14 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import selectinload
 from sqlalchemy import select
 
-from app.config import JWT_SECRET, JWT_ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from app.config import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    JWT_ALGORITHM,
+    JWT_SECRET,
+    REFRESH_TOKEN_EXPIRE_DAYS,
+)
 from app.db import session_scope
-from app.models_db import User, Role
+from app.models_db import RefreshToken, Role, User
 
 # auto_error=False so endpoints can accept an optional token (anonymous allowed).
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login", auto_error=False)
@@ -52,6 +59,83 @@ def create_access_token(user: User) -> str:
         "exp": int((now + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)).timestamp()),
     }
     return jwt.encode(payload, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+
+# ──────────────────────────────────────
+# Refresh tokens (opaque, stored hashed, rotated on use)
+# ──────────────────────────────────────
+class AuthError(Exception):
+    """Raised for refresh/logout failures that map to a 401."""
+
+
+def _hash_token(raw: str) -> str:
+    """Store/compare only this hash — never the raw token."""
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
+
+
+async def issue_refresh_token(user_id: int) -> str:
+    """Create a new refresh-token row and return the raw token (shown once)."""
+    raw = secrets.token_urlsafe(32)
+    expires = datetime.now(timezone.utc) + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+    async with session_scope() as session:
+        if session is None:
+            raise AuthError("Database is unavailable.")
+        session.add(RefreshToken(
+            user_id=user_id, token_hash=_hash_token(raw), expires_at=expires,
+        ))
+        await session.commit()
+    return raw
+
+
+async def rotate_refresh_token(raw: str) -> tuple[User, str]:
+    """
+    Validate a refresh token, revoke it, and issue a fresh one (rotation).
+    Returns (user, new_raw_refresh_token). Raises AuthError on any problem.
+    """
+    token_hash = _hash_token(raw)
+    async with session_scope() as session:
+        if session is None:
+            raise AuthError("Database is unavailable.")
+
+        row = (await session.execute(
+            select(RefreshToken).where(RefreshToken.token_hash == token_hash)
+        )).scalar_one_or_none()
+
+        now = datetime.now(timezone.utc)
+        if row is None or row.revoked or row.expires_at <= now:
+            raise AuthError("Invalid or expired refresh token.")
+
+        user = (await session.execute(
+            select(User)
+            .options(selectinload(User.doctor), selectinload(User.patient))
+            .where(User.id == row.user_id)
+        )).scalar_one_or_none()
+        if user is None or not user.is_active:
+            raise AuthError("User not found or inactive.")
+
+        # Rotate: revoke the presented token, mint a replacement in one tx.
+        row.revoked = True
+        new_raw = secrets.token_urlsafe(32)
+        new_expires = now + timedelta(days=REFRESH_TOKEN_EXPIRE_DAYS)
+        session.add(RefreshToken(
+            user_id=user.id, token_hash=_hash_token(new_raw), expires_at=new_expires,
+        ))
+        await session.commit()
+        return user, new_raw
+
+
+async def revoke_refresh_token(raw: str) -> None:
+    """Revoke a refresh token (logout). Silent if it doesn't exist."""
+    token_hash = _hash_token(raw)
+    async with session_scope() as session:
+        if session is None:
+            return
+        row = (await session.execute(
+            select(RefreshToken).where(RefreshToken.token_hash == token_hash)
+        )).scalar_one_or_none()
+        if row is not None and not row.revoked:
+            row.revoked = True
+            await session.commit()
 
 
 def _decode_token(token: str) -> dict:

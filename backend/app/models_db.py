@@ -127,6 +127,32 @@ class DoctorPatient(Base):
 
 
 # ──────────────────────────────────────
+# Sessions
+# ──────────────────────────────────────
+class RefreshToken(Base):
+    """
+    A server-side refresh-token record (one per active session).
+
+    We store only a SHA-256 *hash* of the opaque token, never the token itself —
+    so a database leak can't be used to impersonate users. On refresh the old
+    row is marked revoked and a new one issued (rotation), so a stolen refresh
+    token stops working the moment the legitimate user next refreshes. Logout
+    simply revokes the row.
+    """
+
+    __tablename__ = "refresh_tokens"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True))
+    revoked: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=_utcnow)
+
+
+# ──────────────────────────────────────
 # Clinical data
 # ──────────────────────────────────────
 class Consultation(Base):
