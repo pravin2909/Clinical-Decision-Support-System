@@ -1,6 +1,6 @@
 """
 ═══════════════════════════════════════════════════════════════════════
-  DPT Clinical Decision Support Engine
+  Clinical Decision Support Engine
   MODEL EVALUATION SCRIPT — Kaggle Notebook
 
   PURPOSE : Evaluate all 4 models (MobileNet Router + 3 ViTs)
@@ -525,7 +525,7 @@ def evaluate_full(model, loader, num_classes, class_names, model_name, prefix):
 
 def main():
     print("=" * 60)
-    print("  📊 DPT MODEL EVALUATION SUITE")
+    print("  📊 CDS MODEL EVALUATION SUITE")
     print("=" * 60)
 
     results = {}
@@ -663,7 +663,7 @@ def main():
                 f'{acc:.2f}%', va='center', fontsize=13, fontweight='bold')
     ax.set_xlim(0, 110)
     ax.set_xlabel('Accuracy (%)', fontsize=12, fontweight='bold')
-    ax.set_title('DPT Engine — Model Accuracy Comparison', fontsize=15, fontweight='bold')
+    ax.set_title('Clinical Decision Support Engine — Model Accuracy Comparison', fontsize=15, fontweight='bold')
     ax.grid(axis='x', alpha=0.3)
     plt.tight_layout()
     plt.savefig(os.path.join(PLOTS_DIR, 'overall_comparison.png'), dpi=300, bbox_inches='tight', facecolor='white')

@@ -1,6 +1,6 @@
-# DPT Clinical Decision Support Engine — Technical Report
+# Clinical Decision Support Engine — Technical Report
 
-## Diagnostic, Prognostic & Therapeutic (DPT) System
+## Diagnostic, Prognostic & Therapeutic System
 
 ---
 
@@ -485,7 +485,7 @@ Where:
 | **Size on Disk** | ~3.3 GB |
 | **API Endpoint** | `http://localhost:11434/api/generate` |
 | **Context Window** | 8,192 tokens |
-| **Role in Pipeline** | Generate structured DPT clinical reports from classified disease names or symptom descriptions |
+| **Role in Pipeline** | Generate structured clinical reports from classified disease names or symptom descriptions |
 
 ### 5.2 Inference Settings
 
@@ -493,7 +493,7 @@ Where:
 |---|---|---|
 | `temperature` | 0.7 | Balanced between creativity and factual accuracy |
 | `top_p` | 0.9 | Nucleus sampling for coherent medical text |
-| `num_predict` | 2048 | Maximum tokens for a complete DPT report |
+| `num_predict` | 2048 | Maximum tokens for a complete clinical report |
 
 ---
 
@@ -530,7 +530,7 @@ Where:
 ## 8. File Structure
 
 ```
-DPT clinical decision support engine/
+CDS clinical decision support engine/
 │
 ├── Models/                              ← Trained model weights
 │   ├── mobilenet_router.pth               (34.9 MB)
@@ -621,10 +621,10 @@ Each `.pth` file contains a dictionary with the following keys:
 |---|---|---|---|
 | `GET` | `/health` | — | System status, Ollama status, device |
 | `GET` | `/models/status` | — | Loaded models, class lists |
-| `POST` | `/analyze/image` | Image file (multipart) | Routing + Disease + DPT Report |
-| `POST` | `/analyze/text` | Symptoms text (form) | DPT Report |
-| `POST` | `/analyze/audio` | Audio file (multipart) | Transcription + DPT Report |
-| `POST` | `/analyze/image/stream` | Image file (multipart) | SSE streaming DPT Report |
+| `POST` | `/analyze/image` | Image file (multipart) | Routing + Disease + Clinical Report |
+| `POST` | `/analyze/text` | Symptoms text (form) | Clinical Report |
+| `POST` | `/analyze/audio` | Audio file (multipart) | Transcription + Clinical Report |
+| `POST` | `/analyze/image/stream` | Image file (multipart) | SSE streaming Clinical Report |
 
 ---
 

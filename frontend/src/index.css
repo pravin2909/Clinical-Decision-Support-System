@@ -38,19 +38,19 @@
   --chat-control-bg: var(--glass-control-bg);
   --chat-control-border: var(--glass-control-border);
   --chat-control-shadow: var(--glass-control-shadow);
-  --chat-blur: blur(20px) saturate(185%);
+  --chat-blur: none;
 
-  /* Wordmark gradient: slate/black → vivid blue */
-  --logo-gradient: linear-gradient(120deg, #0b1220 0%, #1e293b 30%, #0284c7 66%, #38bdf8 100%);
-  --logo-glow: drop-shadow(0 1px 10px rgba(56, 189, 248, 0.28));
+  /* Wordmark gradient: slate/black → vivid green */
+  --logo-gradient: linear-gradient(120deg, #0b1220 0%, #1e293b 30%, #2a9d59 66%, #36b76b 100%);
+  --logo-glow: drop-shadow(0 1px 10px rgba(54, 183, 107, 0.28));
 
-  /* Landing hero glass (blue-tinted) — buttons + navbar */
+  /* Landing hero glass (green-tinted) — buttons + navbar */
   --glass-hero-bg: linear-gradient(135deg, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0.22) 48%, rgba(255,255,255,0.55) 100%);
   --glass-hero-border: rgba(255,255,255,0.95);
-  --glass-hero-shadow: 0 0 0 1px rgba(99,102,241,0.12), 0 14px 34px rgba(59,130,246,0.24), inset 0 2px 1px rgba(255,255,255,1), inset 0 -3px 8px rgba(59,130,246,0.14);
+  --glass-hero-shadow: 0 0 0 1px rgba(54,183,107,0.14), 0 14px 34px rgba(54,183,107,0.24), inset 0 2px 1px rgba(255,255,255,1), inset 0 -3px 8px rgba(54,183,107,0.14);
   --glass-nav-bg: linear-gradient(135deg, rgba(255,255,255,0.75), rgba(255,255,255,0.45));
   --glass-nav-border: rgba(255,255,255,0.9);
-  --glass-nav-shadow: 0 0 0 1px rgba(99,102,241,0.12), 0 12px 32px rgba(59,130,246,0.16), inset 0 1.5px 1px rgba(255,255,255,1);
+  --glass-nav-shadow: 0 0 0 1px rgba(54,183,107,0.14), 0 12px 32px rgba(54,183,107,0.16), inset 0 1.5px 1px rgba(255,255,255,1);
 }
 
 .dark {
@@ -89,17 +89,17 @@
   --chat-control-shadow: none;
   --chat-blur: none;
 
-  /* Wordmark gradient in dark mode: white → vivid blue */
-  --logo-gradient: linear-gradient(120deg, #f8fafc 0%, #dbeafe 28%, #38bdf8 64%, #0ea5e9 100%);
-  --logo-glow: drop-shadow(0 1px 12px rgba(56, 189, 248, 0.45));
+  /* Wordmark gradient in dark mode: white → vivid green */
+  --logo-gradient: linear-gradient(120deg, #f8fafc 0%, #d4f1e0 28%, #4ac07e 64%, #36b76b 100%);
+  --logo-glow: drop-shadow(0 1px 12px rgba(74, 192, 126, 0.45));
 
-  /* Landing hero glass (dark): translucent, keeps the blue glow */
+  /* Landing hero glass (dark): translucent, keeps the green glow */
   --glass-hero-bg: linear-gradient(135deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.05) 48%, rgba(255,255,255,0.10) 100%);
   --glass-hero-border: rgba(255,255,255,0.18);
-  --glass-hero-shadow: 0 0 0 1px rgba(99,102,241,0.25), 0 14px 34px rgba(59,130,246,0.30), inset 0 1px 0 rgba(255,255,255,0.12);
+  --glass-hero-shadow: 0 0 0 1px rgba(54,183,107,0.28), 0 14px 34px rgba(54,183,107,0.30), inset 0 1px 0 rgba(255,255,255,0.12);
   --glass-nav-bg: linear-gradient(135deg, rgba(255,255,255,0.08), rgba(255,255,255,0.04));
   --glass-nav-border: rgba(255,255,255,0.12);
-  --glass-nav-shadow: 0 0 0 1px rgba(99,102,241,0.22), 0 12px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
+  --glass-nav-shadow: 0 0 0 1px rgba(54,183,107,0.25), 0 12px 32px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.08);
 }
 
 html,
@@ -108,11 +108,19 @@ body {
   color: rgb(var(--text));
 }
 
+/* No coloured flash when tapping/clicking cards and buttons. */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+button:focus:not(:focus-visible) {
+  outline: none;
+}
+
 /* The accent blue is accent-700/600 (dark) for contrast on white. On black it
    looks dull, so brighten accent text to accent-400 in dark mode. */
 .dark .text-accent-700,
 .dark .text-accent-600 {
-  color: rgb(56 189 248 / var(--tw-text-opacity, 1));
+  color: rgb(94 212 154 / var(--tw-text-opacity, 1));
 }
 
 .material-symbols-outlined {
@@ -130,23 +138,97 @@ body {
   -webkit-font-smoothing: antialiased;
 }
 
+/* ── Auth promo panel: calm clinical monitor animation ─────────────────── */
+@keyframes auth-ecg-draw {
+  from { stroke-dashoffset: 1200; }
+  to { stroke-dashoffset: 0; }
+}
+.auth-ecg {
+  stroke-dasharray: 1200;
+  animation: auth-ecg-draw 6s linear infinite;
+}
+@keyframes auth-node-pulse {
+  0%, 100% { opacity: 0.25; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.35); }
+}
+@keyframes auth-ring {
+  0% { transform: scale(0.6); opacity: 0.5; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+@keyframes auth-rise {
+  0% { transform: translateY(0); opacity: 0; }
+  15% { opacity: 0.6; }
+  85% { opacity: 0.6; }
+  100% { transform: translateY(-120px); opacity: 0; }
+}
+@keyframes auth-shimmer {
+  0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+  50% { transform: translate3d(3%, -4%, 0) scale(1.08); }
+}
+.auth-shimmer { animation: auth-shimmer 14s ease-in-out infinite; }
+
+/* slow twinkle for the floating particle field */
+@keyframes auth-twinkle {
+  0%, 100% { opacity: 0.15; transform: scale(0.85); }
+  50% { opacity: 0.85; transform: scale(1.1); }
+}
+
+/* flowing silk waves drift horizontally (period = 250px) */
+@keyframes auth-wave-flow {
+  from { transform: translateX(0); }
+  to { transform: translateX(-250px); }
+}
+/* orbiting particles sweep around a focal point */
+@keyframes auth-orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-wave, .auth-orbit, .auth-twinkle-el { animation: none !important; }
+}
+
+/* flowing data along network edges */
+@keyframes auth-dash-flow { to { stroke-dashoffset: -60; } }
+.auth-flow { stroke-dasharray: 5 14; animation: auth-dash-flow 1.6s linear infinite; }
+.auth-flow-2 { stroke-dasharray: 4 18; animation: auth-dash-flow 2.4s linear infinite; }
+
+/* drifting ambient orbs */
+@keyframes auth-drift {
+  0%, 100% { transform: translate(0, 0); }
+  33% { transform: translate(14px, -18px); }
+  66% { transform: translate(-10px, 10px); }
+}
+.auth-drift { animation: auth-drift 16s ease-in-out infinite; }
+.auth-drift-2 { animation: auth-drift 22s ease-in-out infinite reverse; }
+
+/* headline underline draws itself, then holds */
+@keyframes auth-underline-draw {
+  0% { stroke-dashoffset: 240; }
+  40%, 100% { stroke-dashoffset: 0; }
+}
+.auth-underline { stroke-dasharray: 240; animation: auth-underline-draw 3.5s ease-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .auth-ecg, .auth-shimmer, .auth-flow, .auth-flow-2, .auth-drift, .auth-drift-2, .auth-underline { animation: none; stroke-dashoffset: 0; }
+}
+
 /* Landing hero wash */
 .hero-wash {
   background:
-    radial-gradient(60% 70% at 12% -5%, rgba(14, 165, 233, 0.14) 0%, transparent 60%),
-    radial-gradient(55% 65% at 100% 0%, rgba(2, 132, 199, 0.12) 0%, transparent 55%);
+    radial-gradient(60% 70% at 12% -5%, rgba(54, 183, 107, 0.14) 0%, transparent 60%),
+    radial-gradient(55% 65% at 100% 0%, rgba(42, 157, 89, 0.12) 0%, transparent 55%);
 }
 
 /* ── Landing: sleek dark / developer aesthetic ─────────────────────── */
 .landing {
   --grid: rgba(15, 23, 42, 0.055);
-  --aurora-1: rgba(14, 165, 233, 0.16);
-  --aurora-2: rgba(37, 99, 235, 0.12);
+  --aurora-1: rgba(54, 183, 107, 0.16);
+  --aurora-2: rgba(244, 161, 58, 0.11);
 }
 .dark .landing {
   --grid: rgba(255, 255, 255, 0.05);
-  --aurora-1: rgba(14, 165, 233, 0.18);
-  --aurora-2: rgba(59, 130, 246, 0.14);
+  --aurora-1: rgba(74, 192, 126, 0.18);
+  --aurora-2: rgba(244, 161, 58, 0.13);
 }
 
 /* Faint blueprint grid, faded out toward the edges with a radial mask */
@@ -216,8 +298,8 @@ body {
   position: absolute;
   width: 100%;
   height: 2px;
-  background: rgba(14, 165, 233, 0.7);
-  box-shadow: 0 0 15px 2px rgba(56, 189, 248, 0.8);
+  background: rgba(54, 183, 107, 0.7);
+  box-shadow: 0 0 15px 2px rgba(74, 192, 126, 0.8);
   top: 50%;
   left: 0;
   display: none;
@@ -251,3 +333,76 @@ body {
 .animate-fade-in {
   animation: fade-in 0.4s ease-out;
 }
+
+/* Modal entrance: soft fade + pop */
+@keyframes modal-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.97); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.animate-modal-pop { animation: modal-pop 0.28s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+@keyframes modal-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-backdrop-in { animation: modal-backdrop-in 0.25s ease-out both; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-modal-pop, .animate-backdrop-in { animation: none; }
+}
+
+/* ── Dashboard motion kit (spec: fadeInUp / slideIn / growUp / progressFill) ── */
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+.fade-in-up { animation: fadeInUp 0.5s ease-out both; }
+
+@keyframes slideInRight {
+  from { opacity: 0; transform: translateX(16px); }
+  to { opacity: 1; transform: none; }
+}
+.slide-in-right { animation: slideInRight 0.4s ease-out both; }
+
+@keyframes growUp {
+  from { transform: scaleY(0); }
+  to { transform: scaleY(1); }
+}
+.grow-up {
+  transform-origin: bottom center;
+  animation: growUp 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+/* Progress bars fill from 0 to their target width (width is set inline). */
+.progress-fill {
+  width: 0;
+  transition: width 0.8s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fade-in-up, .slide-in-right, .grow-up { animation: none; }
+  .progress-fill { transition: none; }
+}
+
+/* ── Rendered markdown (.md) for chat answers / clinical reports ── */
+.md { color: rgb(var(--text)); line-height: 1.6; font-size: 0.95rem; }
+.md > :first-child { margin-top: 0; }
+.md > :last-child { margin-bottom: 0; }
+.md p { margin: 0.5rem 0; }
+.md strong { font-weight: 600; color: rgb(var(--text)); }
+.md h1, .md h2, .md h3, .md h4 { color: rgb(var(--text)); font-weight: 600; line-height: 1.3; margin: 0.9rem 0 0.4rem; }
+.md h1 { font-size: 1.15rem; }
+.md h2 { font-size: 1.05rem; }
+.md h3, .md h4 { font-size: 0.98rem; }
+.md ul, .md ol { margin: 0.4rem 0; padding-left: 1.25rem; }
+.md li { margin: 0.2rem 0; }
+.md ul { list-style: disc; }
+.md ol { list-style: decimal; }
+.md hr { border: 0; border-top: 1px solid rgb(var(--border)); margin: 0.9rem 0; }
+.md a { color: #1f7a46; text-decoration: underline; }
+.md code { background: rgb(var(--surface-2)); padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.88em; }
+.md pre { background: rgb(var(--surface-2)); padding: 0.75rem; border-radius: 8px; overflow-x: auto; margin: 0.6rem 0; }
+.md pre code { background: none; padding: 0; }
+.md blockquote { border-left: 3px solid rgb(var(--border)); padding-left: 0.75rem; margin: 0.6rem 0; color: rgb(var(--text-muted)); }
+/* Tables */
+.md table { width: 100%; border-collapse: collapse; margin: 0.7rem 0; font-size: 0.9rem; display: block; overflow-x: auto; }
+.md th, .md td { border: 1px solid rgb(var(--border)); padding: 0.4rem 0.6rem; text-align: left; vertical-align: top; }
+.md th { background: rgb(var(--surface-2)); font-weight: 600; }

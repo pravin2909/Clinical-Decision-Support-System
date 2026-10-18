@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties, ReactNode } from "react";
-import { Link } from "react-router-dom";
 import Logo from "../components/Logo";
+import AuthModal from "../components/AuthModal";
 
 const appleFont: CSSProperties = {
   fontFamily:
@@ -72,9 +72,9 @@ function SectionHead({ eyebrowText, title, sub }: { eyebrowText: string; title: 
   );
 }
 
-function Navbar() {
+function Navbar({ openAuth }: { openAuth: (mode: "signin" | "signup") => void }) {
   return (
-    <header className="sticky top-0 z-30 backdrop-blur-xl bg-app/70 border-b border-line/60">
+    <header className="sticky top-0 z-30 bg-app/95 border-b border-line/60">
       <div className="max-w-6xl mx-auto h-14 px-5 flex items-center justify-between">
         <Logo />
         <nav className="hidden md:flex items-center gap-1 text-sm font-medium text-muted">
@@ -83,6 +83,9 @@ function Navbar() {
           <a href="#report" className="px-3 py-2 rounded-lg hover:text-content transition-colors">The report</a>
           <a href="#privacy" className="px-3 py-2 rounded-lg hover:text-content transition-colors">Privacy</a>
         </nav>
+        <button onClick={() => openAuth("signin")} className="rounded-full bg-content text-app px-4 py-2 text-sm font-semibold transition hover:opacity-90">
+          Get started
+        </button>
       </div>
     </header>
   );
@@ -92,12 +95,12 @@ const PIPE = [
   { icon: "add_a_photo", label: "Input", note: "Image, text or voice" },
   { icon: "account_tree", label: "Router", note: "Eye, dental or skin" },
   { icon: "neurology", label: "Classifier", note: "Condition and confidence" },
-  { icon: "clinical_notes", label: "DPT report", note: "Plain language output" },
+  { icon: "clinical_notes", label: "clinical report", note: "Plain language output" },
 ];
 
 function PipelineConsole() {
   return (
-    <div className="float-soft relative rounded-2xl border border-line bg-surface/60 backdrop-blur-xl shadow-2xl overflow-hidden">
+    <div className="float-soft relative rounded-2xl border border-line bg-surface shadow-soft overflow-hidden">
       <div className="flex items-center gap-1.5 px-4 h-10 border-b border-line/70">
         <span className="size-2.5 rounded-full bg-rose-400/70" />
         <span className="size-2.5 rounded-full bg-amber-400/70" />
@@ -125,7 +128,7 @@ function PipelineConsole() {
   );
 }
 
-function Hero() {
+function Hero({ openAuth }: { openAuth: (mode: "signin" | "signup") => void }) {
   const stats = [
     { k: "3", v: "Input modalities" },
     { k: "4", v: "Vision models" },
@@ -139,7 +142,7 @@ function Hero() {
       <div className="landing-grid absolute inset-0 pointer-events-none" />
 
       <div className="relative max-w-6xl mx-auto px-6 pt-14 pb-14 text-center">
-        <Reveal className="inline-flex items-center gap-2 rounded-full border border-line bg-surface/60 backdrop-blur px-3.5 py-1.5">
+        <Reveal className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3.5 py-1.5">
           <span className="relative flex size-2">
             <span className="absolute inline-flex size-full rounded-full bg-accent-500 opacity-60 animate-ping" />
             <span className="relative inline-flex size-2 rounded-full bg-accent-500" />
@@ -151,29 +154,29 @@ function Hero() {
 
         <Reveal delay={60}>
           <h1 className="font-display text-5xl md:text-7xl font-bold tracking-tight text-content leading-[1.03] max-w-4xl mx-auto mt-7">
-            From image to insight,
+            Understand your health,
             <br className="hidden md:block" />
-            <span className="bg-gradient-to-r from-sky-400 to-blue-600 bg-clip-text text-transparent">
-              {" "}in seconds
+            <span className="bg-gradient-to-r from-accent-400 to-accent-600 bg-clip-text text-transparent">
+              {" "}sooner
             </span>
           </h1>
         </Reveal>
 
         <Reveal delay={120}>
           <p className="mt-6 text-lg text-muted max-w-2xl mx-auto leading-relaxed">
-            A multimodal engine that reads medical images, symptom text or voice and returns a structured report,
-            powered by domain trained vision transformers and a private, local reasoning model.
+            Screen symptoms with AI, track your vitals, connect with your doctors, and keep every
+            record in one private place that runs on your own machine.
           </p>
         </Reveal>
 
         <Reveal delay={180} className="mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Link to="/app/diagnosis" className={`group ${btnPrimary}`}>
+          <button onClick={() => openAuth("signin")} className={`group ${btnPrimary}`}>
             <span className="material-symbols-outlined text-lg">stethoscope</span>
             Try a diagnosis
             <span className="material-symbols-outlined text-base transition-transform group-hover:translate-x-0.5">
               arrow_forward
             </span>
-          </Link>
+          </button>
           <a href="#how" className={btnGhost}>See how it works</a>
         </Reveal>
 
@@ -187,7 +190,7 @@ function Hero() {
           <PipelineConsole />
         </Reveal>
 
-        <Reveal delay={160} className="mt-8 max-w-3xl mx-auto grid grid-cols-2 md:grid-cols-4 rounded-2xl border border-line bg-surface/40 backdrop-blur divide-x divide-y md:divide-y-0 divide-line">
+        <Reveal delay={160} className="mt-8 max-w-3xl mx-auto grid grid-cols-2 md:grid-cols-4 rounded-2xl border border-line bg-surface divide-x divide-y md:divide-y-0 divide-line">
           {stats.map((s) => (
             <div key={s.v} className="py-6 px-4">
               <p className="font-display text-3xl font-bold text-content">{s.k}</p>
@@ -201,16 +204,16 @@ function Hero() {
 }
 
 const CAPABILITIES = [
-  { icon: "add_a_photo", title: "Multimodal intake", body: "Upload a medical image, type your symptoms, or speak. One engine, three ways in, with the same structured result every time." },
-  { icon: "account_tree", title: "Smart routing", body: "A MobileNet router sends each image to the right domain, eye, dental or skin, automatically." },
-  { icon: "neurology", title: "Vision transformers", body: "Domain specific ViT classifiers identify the likely condition and return a calibrated confidence score." },
-  { icon: "clinical_notes", title: "DPT reasoning", body: "A local language model turns the finding into a structured, plain language report that is easy to read and act on." },
+  { icon: "stethoscope", title: "AI screening", body: "Upload an image, type your symptoms, or speak. The engine reads it and returns a clear, structured report in seconds." },
+  { icon: "monitoring", title: "Health tracker", body: "Log your vitals like blood pressure, glucose, and weight, then watch your trends over time." },
+  { icon: "groups", title: "Your care team", body: "Connect with doctors, book visits, and message them, with full control over what you choose to share." },
+  { icon: "prescriptions", title: "Prescriptions & records", body: "Upload a prescription to read it automatically, and keep every screening and visit in one timeline." },
 ];
 
 function Capabilities() {
   return (
     <section id="capabilities" className="max-w-6xl mx-auto px-6 py-16">
-      <Reveal><SectionHead eyebrowText="Capabilities" title="Everything the screening needs, in one flow" sub="Four modular services working together from the first upload to the final report." /></Reveal>
+      <Reveal><SectionHead eyebrowText="Capabilities" title="One place for your whole health journey" sub="From a quick screening to your vitals, your doctors, and your records, together in one private app." /></Reveal>
       <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
         {CAPABILITIES.map((c, i) => (
           <Reveal key={c.title} delay={i * 70}>
@@ -231,7 +234,7 @@ function Capabilities() {
 const STEPS = [
   { n: "01", icon: "alt_route", title: "Route", body: "The router detects the clinical domain of the input in milliseconds." },
   { n: "02", icon: "biotech", title: "Classify", body: "A domain trained transformer predicts the most likely condition." },
-  { n: "03", icon: "description", title: "Reason", body: "The reasoning model drafts a full DPT report, grounded in the finding." },
+  { n: "03", icon: "description", title: "Reason", body: "The reasoning model drafts a full clinical report, grounded in the finding." },
 ];
 
 function HowItWorks() {
@@ -328,23 +331,23 @@ function Privacy() {
   );
 }
 
-function CTA() {
+function CTA({ openAuth }: { openAuth: (mode: "signin" | "signup") => void }) {
   return (
     <section className="max-w-6xl mx-auto px-6 py-16">
       <Reveal>
-        <div className="relative overflow-hidden rounded-3xl border border-line bg-surface/40 backdrop-blur-xl px-8 py-12 text-center">
+        <div className="relative overflow-hidden rounded-3xl border border-line bg-surface px-8 py-12 text-center">
           <div className="landing-aurora absolute inset-0 pointer-events-none opacity-70" />
           <div className="relative">
             <h2 className="font-display text-3xl md:text-5xl font-bold text-content tracking-tight">
               Ready to see it in action?
             </h2>
             <p className="mt-4 text-muted max-w-xl mx-auto">
-              Open the platform and run a diagnosis from an image, text, or your voice.
+              Open the platform to screen symptoms, track your vitals, and manage your care, all in one place.
             </p>
-            <Link to="/app" className={`mt-9 ${btnPrimary}`}>
-              Open Platform
+            <button onClick={() => openAuth("signin")} className={`mt-9 ${btnPrimary}`}>
+              Get started
               <span className="material-symbols-outlined text-base">arrow_forward</span>
-            </Link>
+            </button>
           </div>
         </div>
       </Reveal>
@@ -364,16 +367,20 @@ function Footer() {
 }
 
 export default function LandingPage() {
+  const [authMode, setAuthMode] = useState<"signin" | "signup" | null>(null);
+  const openAuth = (mode: "signin" | "signup") => setAuthMode(mode);
+
   return (
     <div style={appleFont} className="landing bg-app antialiased">
-      <Navbar />
-      <Hero />
+      <Navbar openAuth={openAuth} />
+      <Hero openAuth={openAuth} />
       <Capabilities />
       <HowItWorks />
       <ReportSection />
       <Privacy />
-      <CTA />
+      <CTA openAuth={openAuth} />
       <Footer />
+      <AuthModal open={authMode !== null} initialMode={authMode ?? "signin"} onClose={() => setAuthMode(null)} />
     </div>
   );
 }

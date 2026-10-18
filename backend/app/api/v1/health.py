@@ -18,6 +18,8 @@ from fastapi import APIRouter, Response
 
 from app import db as db_module
 from app.config import LLM_BASE_URL, LLM_MODEL
+from app.core import cache, ratelimit
+from app.core import redis as redis_module
 from app.pipeline import pipeline
 from app.reasoning import check_llm_status
 
@@ -42,6 +44,7 @@ async def readyz(response: Response):
         "status": "ready" if ready else "not_ready",
         "models_loaded": pipeline.is_loaded(),
         "db": db_module.db_ready,
+        "redis": redis_module.is_ready(),
     }
 
 
@@ -82,6 +85,8 @@ async def metrics():
     """Minimal Prometheus text exposition (placeholder until Phase 5)."""
     loaded = 1 if pipeline.is_loaded() else 0
     uptime = time.time() - _STARTED
+    c = cache.stats()
+    rl = ratelimit.stats()
     lines = [
         "# HELP dpt_up Process is responding (always 1 when scraped).",
         "# TYPE dpt_up gauge",
@@ -92,5 +97,20 @@ async def metrics():
         "# HELP dpt_uptime_seconds Seconds since process start.",
         "# TYPE dpt_uptime_seconds gauge",
         f"dpt_uptime_seconds {uptime:.0f}",
+        "# HELP dpt_cache_hits_total Cache hits since start.",
+        "# TYPE dpt_cache_hits_total counter",
+        f"dpt_cache_hits_total {c['hits']}",
+        "# HELP dpt_cache_misses_total Cache misses since start.",
+        "# TYPE dpt_cache_misses_total counter",
+        f"dpt_cache_misses_total {c['misses']}",
+        "# HELP dpt_cache_hit_rate Cache hit rate (0-1) since start.",
+        "# TYPE dpt_cache_hit_rate gauge",
+        f"dpt_cache_hit_rate {c['hit_rate']:.4f}",
+        "# HELP dpt_ratelimit_allowed_total Requests allowed by the rate limiter.",
+        "# TYPE dpt_ratelimit_allowed_total counter",
+        f"dpt_ratelimit_allowed_total {rl['allowed']}",
+        "# HELP dpt_ratelimit_blocked_total Requests rejected (429) by the rate limiter.",
+        "# TYPE dpt_ratelimit_blocked_total counter",
+        f"dpt_ratelimit_blocked_total {rl['blocked']}",
     ]
     return Response("\n".join(lines) + "\n", media_type="text/plain; version=0.0.4")

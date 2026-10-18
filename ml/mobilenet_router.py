@@ -1,6 +1,6 @@
 """
 ═══════════════════════════════════════════════════════════════════════
-  DPT Clinical Decision Support Engine
+  Clinical Decision Support Engine
   MobileNet V2 Image Router — Kaggle Notebook Training Script
 
   PURPOSE : Classify an input medical image as one of 3 domains:
@@ -348,7 +348,7 @@ def validate(model, loader, criterion, device):
 # ──────────────────────────────────────
 def main():
     print("=" * 60)
-    print("  🧭 DPT — MOBILENET V2 IMAGE ROUTER TRAINING")
+    print("  🧭 CDS — MOBILENET V2 IMAGE ROUTER TRAINING")
     print("=" * 60)
 
     # Step 1: Download & prepare custom 3-class dataset

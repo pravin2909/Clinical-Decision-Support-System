@@ -1,7 +1,7 @@
 import type { ConfidenceTier, PipelineState } from "../types";
 
 const TIER: Record<Exclude<ConfidenceTier, null>, { cls: string; icon: string; label: string }> = {
-  high: { cls: "text-brand-500", icon: "trending_up", label: "High" },
+  high: { cls: "text-accent-600", icon: "trending_up", label: "High" },
   moderate: { cls: "text-yellow-500", icon: "warning", label: "Moderate" },
   low: { cls: "text-red-500", icon: "error", label: "Low" },
 };
@@ -35,7 +35,7 @@ export default function StatsRow({ state }: { state: PipelineState }) {
         <span className="text-2xl font-bold text-slate-900 dark:text-white">
           {state.inferenceTime}
         </span>
-        <span className="text-slate-400 text-xs font-mono">DPT Pipeline</span>
+        <span className="text-slate-400 text-xs font-mono">CDS Pipeline</span>
       </Card>
 
       <Card label="Identified Domain">

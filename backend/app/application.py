@@ -28,6 +28,7 @@ from app.api.v1 import feature_routers, health_router
 from app.config import LLM_BASE_URL, LLM_MODEL  # noqa: F401 (handy for debugging)
 from app.core.errors import install_exception_handlers
 from app.core.logging import RequestContextMiddleware, configure_logging
+from app.core.redis import close_redis, init_redis
 from app.db import dispose_db, init_db
 from app.pipeline import pipeline
 
@@ -46,7 +47,9 @@ async def lifespan(app: FastAPI):
     """Load ML models and connect the DB on startup; dispose on shutdown."""
     pipeline.load_models()
     await init_db()
+    await init_redis()
     yield
+    await close_redis()
     await dispose_db()
 
 
@@ -108,7 +111,7 @@ def _configure_frontend(app: FastAPI) -> None:
         @app.get("/")
         async def api_root():
             return {
-                "service": "DPT Clinical Decision Support Engine API",
+                "service": "Clinical Decision Support Engine API",
                 "version": "1.0.0",
                 "docs": "/docs",
                 "api": API_V1_PREFIX,
@@ -120,7 +123,7 @@ def create_app() -> FastAPI:
     configure_logging(os.getenv("LOG_LEVEL", "INFO"))
 
     app = FastAPI(
-        title="DPT Clinical Decision Support Engine",
+        title="Clinical Decision Support Engine",
         description=(
             "AI-powered Diagnostic, Prognostic & Therapeutic clinical report generator. "
             "Accepts medical images, symptom text, or audio input."

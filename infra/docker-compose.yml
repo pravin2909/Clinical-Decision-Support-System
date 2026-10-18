@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Local development stack for the DPT Clinical Decision Support Engine.
+# Local development stack for the Clinical Decision Support Engine.
 #
 #   docker compose -f infra/docker-compose.yml up -d        # start data services
 #   docker compose -f infra/docker-compose.yml up -d backend # + the API
@@ -14,7 +14,7 @@
 # (e.g. the API reaches Postgres at `postgres:5432`), regardless of host ports.
 # ─────────────────────────────────────────────────────────────────────────────
 
-name: dpt
+name: cds
 
 services:
   postgres:
@@ -22,15 +22,15 @@ services:
     # RAG work in Phase 3 needs no separate vector database.
     image: pgvector/pgvector:pg16
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-dpt}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-dpt}
-      POSTGRES_DB: ${POSTGRES_DB:-dpt_engine}
+      POSTGRES_USER: ${POSTGRES_USER:-cds}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-cds}
+      POSTGRES_DB: ${POSTGRES_DB:-cds_engine}
     ports:
       - "5433:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-dpt} -d ${POSTGRES_DB:-dpt_engine}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-cds} -d ${POSTGRES_DB:-cds_engine}"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -53,7 +53,7 @@ services:
   minio:
     # S3-compatible object storage for images and PDFs. Never store blobs in
     # Postgres; store them here and keep only signed URIs in the DB.
-    image: minio/minio:RELEASE.2025-04-22T22-12-26Z
+    image: quay.io/minio/minio:latest
     command: ["server", "/data", "--console-address", ":9001"]
     environment:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minio}
@@ -64,7 +64,7 @@ services:
     volumes:
       - minio_data:/data
     healthcheck:
-      test: ["CMD", "mc", "ready", "local"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:9000/minio/health/live || exit 1"]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -74,8 +74,8 @@ services:
     # truth for all relational and clinical data.
     image: mongo:7
     environment:
-      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-dpt}
-      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-dpt}
+      MONGO_INITDB_ROOT_USERNAME: ${MONGO_USER:-cds}
+      MONGO_INITDB_ROOT_PASSWORD: ${MONGO_PASSWORD:-cds}
     ports:
       - "27017:27017"
     volumes:
@@ -93,12 +93,12 @@ services:
       context: ../backend
       dockerfile: Dockerfile
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-dpt}:${POSTGRES_PASSWORD:-dpt}@postgres:5432/${POSTGRES_DB:-dpt_engine}
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-cds}:${POSTGRES_PASSWORD:-cds}@postgres:5432/${POSTGRES_DB:-cds_engine}
       REDIS_URL: redis://redis:6379/0
       MINIO_ENDPOINT: minio:9000
       MINIO_ACCESS_KEY: ${MINIO_ROOT_USER:-minio}
       MINIO_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minio12345}
-      MONGO_URL: mongodb://${MONGO_USER:-dpt}:${MONGO_PASSWORD:-dpt}@mongo:27017
+      MONGO_URL: mongodb://${MONGO_USER:-cds}:${MONGO_PASSWORD:-cds}@mongo:27017
       # The LLM runs on the host (LM Studio/Ollama); reach it from the container
       # via host.docker.internal rather than localhost.
       LLM_BASE_URL: ${LLM_BASE_URL:-http://host.docker.internal:1234/v1}

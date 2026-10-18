@@ -20,7 +20,7 @@ export default function GeneralDiagnosisPage() {
   const busy = state.progress > 0 && state.progress < 100 && state.progressColor !== "red";
 
   return (
-    <div className="max-w-6xl mx-auto px-6 md:px-8 py-8">
+    <div className="px-6 md:px-10 py-8">
       <div className="mb-6">
         <h1 className="text-2xl font-extrabold tracking-tight text-content">General Diagnosis</h1>
         <p className="text-muted mt-1">

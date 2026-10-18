@@ -1,6 +1,6 @@
 """
 ═══════════════════════════════════════════════════════════════════════
-  DPT Clinical Decision Support Engine
+  Clinical Decision Support Engine
   Dental Disease ViT — Kaggle Notebook Training Script
   
   Dataset : salmansajid05/oral-diseases  (6 classes)
@@ -387,7 +387,7 @@ def validate(model, loader, criterion, device):
 # ──────────────────────────────────────
 def main():
     print("=" * 60)
-    print("  🦷 DPT — DENTAL DISEASE ViT TRAINING")
+    print("  🦷 CDS — DENTAL DISEASE ViT TRAINING")
     print("=" * 60)
 
     # Download & prepare

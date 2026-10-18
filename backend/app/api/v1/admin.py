@@ -10,7 +10,8 @@ from fastapi import APIRouter, Depends, HTTPException
 from app import users
 from app.auth import require_role
 from app.models_db import Role, User
-from app.schemas import AssignmentRequest, RegisterRequest
+from app.rag import store as rag_store
+from app.schemas import AssignmentRequest, KbIngestRequest, RegisterRequest
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -48,3 +49,14 @@ async def admin_assign(
         return await users.assign_doctor_patient(req.doctor_id, req.patient_id)
     except users.UserError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+
+@router.post("/kb/ingest")
+async def admin_kb_ingest(
+    req: KbIngestRequest, _: User = Depends(require_role(Role.admin))
+):
+    """Chunk, embed, and upsert a knowledge-base document (patient or doctor KB)."""
+    return await rag_store.ingest_document(
+        audience=req.audience, title=req.title, body=req.body,
+        source_url=req.source_url, license=req.license,
+    )

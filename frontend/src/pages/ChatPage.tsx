@@ -5,14 +5,12 @@ import {
   analyzeTextStream,
   analyzeImageStream,
   analyzeAudioStream,
-  analyzeDoctorStream,
 } from "../lib/api";
 import { exportToWav } from "../lib/audio";
 import { formatReport } from "../lib/format";
 import type { Source } from "../types";
 
 type Role = "user" | "assistant";
-type Mode = "doctor" | "patient";
 interface Msg {
   id: string;
   role: Role;
@@ -118,7 +116,6 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [recording, setRecording] = useState(false);
-  const [mode, setMode] = useState<Mode>("doctor");
   const [showJump, setShowJump] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
@@ -240,11 +237,17 @@ export default function ChatPage() {
     if (!text || busy) return;
     atBottom.current = true;
     const tId = ensureThread(text);
+
+    // Capture history BEFORE adding the new user message so the LLM sees the
+    // previous exchange as context for follow-up questions.
+    const currentThread = threads.find((t) => t.id === tId);
+    const history = (currentThread?.msgs ?? [])
+      .filter((m) => m.text && !m.pending)
+      .map((m) => ({ role: m.role as string, content: m.text }));
+
     addMsg(tId, { id: uid(), role: "user", text });
     setInput("");
-    runStream(tId, () =>
-      mode === "doctor" ? analyzeDoctorStream(text) : analyzeTextStream(text)
-    );
+    runStream(tId, () => analyzeTextStream(text, history));
   };
 
   const sendImage = (file: File) => {
@@ -363,11 +366,16 @@ export default function ChatPage() {
 
       {/* Chat column */}
       <div style={glassPanel} className="flex-1 flex flex-col min-w-0 min-h-0 rounded-3xl overflow-hidden">
-        <div className="shrink-0 flex items-center justify-between gap-3 px-4 md:px-6 py-3 border-b border-white/70">
-          <span className="text-sm font-semibold text-content flex items-center gap-2 truncate">
-            {mode === "doctor" ? "Evidence mode cites medical literature" : "General mode"}
+        <div className="shrink-0 flex items-center gap-2.5 px-4 md:px-6 py-3.5 border-b border-line">
+          <span className="flex items-center justify-center rounded-xl bg-accent-500/10 text-accent-700 border border-accent-500/25 size-8 shrink-0">
+            <span className="material-symbols-outlined text-lg">stethoscope</span>
           </span>
-          <ModeToggle mode={mode} onChange={setMode} />
+          <div className="min-w-0">
+            <p className="text-sm font-semibold text-content leading-tight">Symptom checker</p>
+            <p className="text-[11px] text-muted leading-tight truncate">
+              Describe symptoms, upload an image, or speak.
+            </p>
+          </div>
         </div>
 
         <div className="relative flex-1 min-h-0">
@@ -445,7 +453,7 @@ export default function ChatPage() {
                     sendText();
                   }
                 }}
-                placeholder="Ask a clinical question…"
+                placeholder="Describe your symptoms, or upload an image…"
                 className="flex-1 bg-transparent resize-none outline-none text-content placeholder:text-muted px-2 py-3 max-h-32"
               />
               <button
@@ -464,28 +472,6 @@ export default function ChatPage() {
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function ModeToggle({ mode, onChange }: { mode: Mode; onChange: (m: Mode) => void }) {
-  const opt = (m: Mode, icon: string, label: string) => (
-    <button
-      onClick={() => onChange(m)}
-      style={mode === m ? glassStrong : undefined}
-      className={
-        "flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-sm font-semibold " +
-        (mode === m ? "text-accent-700" : "text-muted hover:text-content")
-      }
-    >
-      <span className="material-symbols-outlined text-base">{icon}</span>
-      {label}
-    </button>
-  );
-  return (
-    <div style={glassControl} className="flex gap-1 p-1 rounded-2xl shrink-0">
-      {opt("doctor", "stethoscope", "Doctor")}
-      {opt("patient", "person", "Patient")}
     </div>
   );
 }

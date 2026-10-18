@@ -1,325 +1,170 @@
-# DPT Clinical Decision Support Engine
+# Clinical Decision Support Engine
 
-## Diagnostic, Prognostic & Therapeutic (DPT)
+A deep-learning project that reads a **medical image**, **typed symptoms**, or
+**spoken description** and produces a clear, plain-language clinical report —
+what the likely condition is, how it usually progresses, and how it's typically
+treated.
+
+At its heart is a **two-stage computer-vision pipeline**: a fast router model
+figures out *what kind* of medical image it's looking at, then hands it to a
+specialist **Vision Transformer (ViT)** trained for that exact domain. A language
+model then turns the finding into an explanation anyone can understand.
+
+> **Decision support, not diagnosis.** Every result carries a confidence score
+> and is meant to assist, not replace, a clinician.
 
 ---
 
-## 1. Project Overview
+## The idea
 
-The **DPT Clinical Decision Support Engine** is an AI-powered multimodal medical assistance system that accepts patient data through **three input modalities** — images, text, and audio — and generates a comprehensive clinical report covering **Diagnosis**, **Prognosis**, and **Therapy** recommendations.
+Most medical-image classifiers try to do one thing well (just skin, or just
+eyes). This project asks: can a single system accept *any* of three common image
+types, route it to the right expert model automatically, and explain the result
+in everyday language — across images, text, and speech?
 
-The system combines **computer vision** (deep learning classifiers), **speech recognition**, and **large language model reasoning** into a unified pipeline that mimics the diagnostic workflow of a medical professional.
+So it's built as a small team of models that each do one job:
 
-> [!IMPORTANT]
-> This is a **decision support** tool — it assists healthcare professionals with preliminary analysis, not a replacement for clinical judgment.
-
----
-
-## 2. System Architecture
-
-```mermaid
-flowchart TD
-    subgraph INPUT["📥 Input Layer"]
-        IMG["🖼️ Medical Image"]
-        TXT["📝 Text (Symptoms)"]
-        AUD["🎙️ Audio/Speech"]
-    end
-
-    subgraph IMAGE_PIPELINE["🔬 Image Classification Pipeline"]
-        MN["MobileNet V2<br/>Image Router<br/>(99.92% acc)"]
-        
-        VIT_EYE["👁️ Eye ViT<br/>4 classes"]
-        VIT_DENTAL["🦷 Dental ViT<br/>6 classes"]
-        VIT_SKIN["🔬 Skin ViT<br/>10 classes"]
-    end
-
-    subgraph TEXT_PIPELINE["📝 Text Pipeline"]
-        STT["🎙️ Speech-to-Text<br/>Conversion"]
-    end
-
-    subgraph REASONING["🧠 Reasoning Engine"]
-        OLLAMA["Qwen 3 via Ollama<br/>Reasoning LLM"]
-    end
-
-    subgraph OUTPUT["📄 Output"]
-        REPORT["DPT Clinical Report<br/>━━━━━━━━━━━━━<br/>🔍 Diagnosis<br/>📈 Prognosis<br/>💊 Therapy"]
-    end
-
-    IMG --> MN
-    MN -->|"eye"| VIT_EYE
-    MN -->|"dental"| VIT_DENTAL
-    MN -->|"skin"| VIT_SKIN
-
-    VIT_EYE -->|"Disease Name"| OLLAMA
-    VIT_DENTAL -->|"Disease Name"| OLLAMA
-    VIT_SKIN -->|"Disease Name"| OLLAMA
-
-    TXT -->|"Symptom Text"| OLLAMA
-    AUD --> STT --> |"Converted Text"| OLLAMA
-
-    OLLAMA --> REPORT
-
-    style INPUT fill:#1a1a2e,stroke:#16213e,color:#fff
-    style IMAGE_PIPELINE fill:#0f3460,stroke:#16213e,color:#fff
-    style TEXT_PIPELINE fill:#533483,stroke:#16213e,color:#fff
-    style REASONING fill:#e94560,stroke:#16213e,color:#fff
-    style OUTPUT fill:#0a6522,stroke:#16213e,color:#fff
+```
+                      ┌─────────── image ───────────┐
+   Image ─▶ Router (MobileNet V2) ─▶ picks domain ─▶ Specialist ViT ─▶ disease + confidence ─┐
+                                      (eye/dental/skin)                                        │
+                                                                                               ▼
+   Text  ───────────────────────────────────────────────────────────────────▶  Language model ─▶ clinical report
+   Speech ─▶ speech-to-text ──────────────────────────────────────────────────▶
 ```
 
 ---
 
-## 3. Input Modalities
+## The models (the interesting part)
 
-### 3.1 🖼️ Image Input
-The user uploads a medical image — this could be a **retinal scan**, **dental/tooth photograph**, or **skin lesion image**. The system automatically identifies which type of medical image it is and classifies the specific disease.
+### 1. The router — MobileNet V2
+A lightweight gateway model (~2.9M parameters) that looks at an incoming image
+and decides which of three medical domains it belongs to: **eye**, **dental**,
+or **skin**. It was fine-tuned with two-phase transfer learning (freeze the
+pretrained backbone, train the head, then unfreeze and refine).
 
-### 3.2 📝 Text Input
-The user types their **symptoms** in natural language (e.g., *"I have red patches on my skin that are itchy and scaling"*). This text is sent directly to the reasoning LLM for analysis.
+- **Validation accuracy: 99.92%** — it almost never sends an image to the wrong
+  specialist, which is exactly what a router needs to do.
+- Fast and cheap, so the expensive specialist model only runs once, on the right
+  image.
 
-### 3.3 🎙️ Audio/Speech Input
-The user speaks their symptoms aloud. The audio is converted to text via **Speech-to-Text**, and the resulting text is processed identically to the text input pathway.
+### 2. The specialists — three custom Vision Transformers
+This is the core of the project. Instead of reusing a big pretrained network,
+each domain gets its **own ViT, built and trained from scratch**. Training a
+transformer from scratch on a *small* medical dataset normally fails — ViTs are
+data-hungry. Two techniques make it work:
 
----
+- **Shifted Patch Tokenization (SPT)** — rather than chopping the image into
+  plain square patches, the image is also shifted in several directions and those
+  versions are folded in. Each patch therefore carries more of its surrounding
+  context, giving the model richer spatial information to learn from when data is
+  scarce.
+- **Locality Self-Attention (LSA)** — a sharpened form of attention (with a
+  learnable temperature, and a patch not allowed to just attend to itself) that
+  pushes the model to focus on the genuinely informative neighbouring patches
+  instead of spreading attention thinly.
 
-## 4. Pipeline Components — Detailed Breakdown
+All three specialists share the same compact design — **72×72 input, patch size
+6, embedding dim 64, 4 transformer layers, 4 attention heads** — small enough to
+train on modest hardware:
 
-### 4.1 MobileNet V2 — Image Router (Gateway Model)
-
-| Property | Detail |
-|---|---|
-| **Purpose** | Classify the input image into one of 3 medical domains |
-| **Architecture** | MobileNet V2 (pretrained on ImageNet, fine-tuned) |
-| **Input** | 224×224 RGB image |
-| **Output** | One of: `eye`, `dental`, `skin` |
-| **Accuracy** | **99.92%** validation accuracy |
-| **Parameters** | 2.88M (lightweight, fast inference) |
-| **Training Strategy** | 2-phase transfer learning (frozen backbone → full fine-tuning) |
-
-**Custom Training Dataset** (built from 3 Kaggle datasets):
-
-| Domain | Source Dataset | Images Sampled |
+| Specialist | What it classifies | Classes |
 |---|---|---|
-| Eye | `gunavenkatdoddi/eye-diseases-classification` | Up to 4,000 |
-| Dental | `salmansajid05/oral-diseases` | Up to 4,000 |
-| Skin | `ismailpromus/skin-diseases-image-dataset` | Up to 4,000 |
+| 👁️ **Eye ViT** | Retinal / eye conditions | 4 — Normal, Cataract, Diabetic Retinopathy, Glaucoma |
+| 🦷 **Dental ViT** | Oral / dental conditions | 7 — Caries, Calculus, Gingivitis, Hypodontia, Tooth Discoloration, Mouth Ulcer, Ulcers |
+| 🔬 **Skin ViT** | Skin conditions | 10 — Melanoma, Eczema, Psoriasis, Basal Cell Carcinoma, Melanocytic Nevi, Benign Keratosis, Atopic Dermatitis, Seborrheic Keratoses, Tinea/Ringworm, Warts/Molluscum |
 
-Once the router predicts the domain, the image is forwarded to the corresponding **domain-specific Vision Transformer (ViT)**.
+### 3. The explainer — a language model
+Once a disease is identified (or a patient just types/speaks their symptoms), a
+local language model writes the actual report in plain language. When the
+classifier isn't confident, the report is explicitly framed as *uncertain* and
+recommends seeing a professional — the confidence score is never hidden.
+
+### Honest results
+| Model | Task | Accuracy | Notes |
+|---|---|---|---|
+| MobileNet V2 router | eye / dental / skin | **99.92%** | Near-perfect routing |
+| Dental ViT | 7 oral conditions | Strong | Best of the three specialists |
+| Eye ViT | 4 eye conditions | Good | — |
+| Skin ViT | 10 skin conditions | **67.55%** | Hardest task — 10 classes, 72×72 input, trained from scratch |
+
+The **skin and eye models are the current focus for improvement** — the honest
+limiting factors are the small 72×72 input (fine-grained skin detail is lost),
+class imbalance, and training from scratch. Larger inputs, more data, and
+class-balancing are the levers.
 
 ---
 
-### 4.2 Vision Transformers — Disease Classifiers
+## Datasets
+All training data is public (Kaggle). The router was trained on up to ~4,000
+images sampled per domain; each specialist on its domain's full set.
 
-All three ViTs share the same custom architecture featuring:
-- **Shifted Patch Tokenization (SPT)** — extracts patches from multiple shifted versions of the image for richer spatial context
-- **Locality Self-Attention (LSA)** — attention mechanism with learnable temperature for better small-dataset performance
-- **Compact design** — 72×72 input, embed_dim=64, depth=4, suitable for low-compute training
-
-#### 👁️ Eye Disease ViT
-
-| Property | Detail |
+| Domain | Source dataset |
 |---|---|
-| **Dataset** | Eye Diseases Classification (Kaggle) |
-| **Classes (4)** | Normal, Cataract, Diabetic Retinopathy, Glaucoma |
-| **Input** | 72×72 RGB retinal scan |
-| **Output** | Disease class + confidence |
+| Eye | `gunavenkatdoddi/eye-diseases-classification` |
+| Dental | `salmansajid05/oral-diseases` |
+| Skin | `ismailpromus/skin-diseases-image-dataset` |
 
-#### 🦷 Dental Disease ViT
-
-| Property | Detail |
-|---|---|
-| **Dataset** | Oral Diseases (Kaggle) |
-| **Classes (6)** | Calculus, Caries, Gingivitis, Hypodontia, Tooth Discoloration, Ulcers |
-| **Input** | 72×72 RGB dental image |
-| **Output** | Disease class + confidence |
-
-#### 🔬 Skin Disease ViT
-
-| Property | Detail |
-|---|---|
-| **Dataset** | Skin Diseases Image Dataset (Kaggle) |
-| **Classes (10)** | Eczema, Melanoma, Atopic Dermatitis, Basal Cell Carcinoma, Melanocytic Nevi, Benign Keratosis, Psoriasis/Lichen Planus, Seborrheic Keratoses, Tinea/Ringworm, Warts/Molluscum |
-| **Input** | 72×72 RGB skin image |
-| **Accuracy** | **67.55%** validation accuracy |
-| **Output** | Disease class + confidence |
+Training and evaluation scripts live in [`ml/`](ml/).
 
 ---
 
-### 4.3 Speech-to-Text Module
+## Three ways to ask
 
-Converts spoken symptom descriptions into text. The converted text is then passed directly to the reasoning LLM, following the same pathway as typed text input.
+- **Image** — upload a photo; the router + specialist classify it, then the
+  report is generated.
+- **Text** — type your symptoms in plain words.
+- **Speech** — say your symptoms; they're transcribed, then explained.
 
----
-
-### 4.4 Reasoning LLM — Qwen 3 (via Ollama)
-
-| Property | Detail |
-|---|---|
-| **Model** | Qwen 3 (downloaded via Ollama) |
-| **Purpose** | Generate detailed clinical DPT report |
-| **Input** | Either: detected disease name (from image pipeline) OR symptom text (from text/audio pipeline) |
-| **Output** | Structured DPT clinical report |
-
-The reasoning LLM receives one of two types of input:
-1. **From image pipeline**: The classified disease name (e.g., *"Melanoma"*, *"Glaucoma"*, *"Caries"*)
-2. **From text/audio pipeline**: Raw symptom description text
-
-It then generates a comprehensive report using its medical knowledge.
+The doctor-facing mode additionally pulls real medical literature (Europe PMC)
+and answers with inline citations `[n]`, so clinical claims are traceable to a
+source rather than made up.
 
 ---
 
-### 4.5 FastAPI Backend
+## Try it
 
-The entire pipeline is orchestrated via a **FastAPI** server that:
-- Accepts image uploads, text input, and audio files via REST API endpoints
-- Routes inputs through the correct pipeline
-- Returns the final DPT report as a structured JSON response
-- Serves as the backend for the Google Stitch UI frontend
+**Prerequisites:** Python 3.11, Node 18+, PostgreSQL, and a local
+OpenAI-compatible LLM (e.g. LM Studio or Ollama) for the report text. Trained
+model weights (`.pth`) go in `backend/Models/`.
 
----
+```bash
+# Backend (API on http://localhost:8000, interactive docs at /docs)
+cd backend
+python -m venv ../.venv && source ../.venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env          # set DATABASE_URL, LLM_BASE_URL, ...
+alembic upgrade head          # create the database schema
+python main.py
 
-## 5. Complete Pipeline Flow
-
-### Flow A: Image Input
-
-```
-User uploads image
-    │
-    ▼
-FastAPI receives image
-    │
-    ▼
-MobileNet V2 classifies → "skin" (99.92% accurate)
-    │
-    ▼
-Image routed to Skin ViT
-    │
-    ▼
-Skin ViT classifies → "Melanoma" (with confidence score)
-    │
-    ▼
-"Melanoma" sent to Qwen 3 (Ollama)
-    │
-    ▼
-Qwen 3 generates DPT Report:
-    ├── 🔍 DIAGNOSIS: Melanoma — a malignant skin tumor...
-    ├── 📈 PROGNOSIS: Early-stage melanoma has a 5-year survival rate of...
-    └── 💊 THERAPY: Surgical excision is the primary treatment...
-```
-
-### Flow B: Text Input
-
-```
-User types: "I have tooth pain with dark spots on my molar"
-    │
-    ▼
-FastAPI receives text
-    │
-    ▼
-Text sent directly to Qwen 3 (Ollama)
-    │
-    ▼
-Qwen 3 generates DPT Report:
-    ├── 🔍 DIAGNOSIS: Likely dental caries (tooth decay)...
-    ├── 📈 PROGNOSIS: If untreated, may progress to pulpitis...
-    └── 💊 THERAPY: Dental filling, root canal if advanced...
-```
-
-### Flow C: Audio Input
-
-```
-User speaks symptoms into microphone
-    │
-    ▼
-FastAPI receives audio
-    │
-    ▼
-Speech-to-Text converts → "I have red itchy patches on my arms"
-    │
-    ▼
-Text sent directly to Qwen 3 (Ollama)
-    │
-    ▼
-Qwen 3 generates DPT Report
+# Frontend (http://localhost:5173)
+cd frontend && npm install && npm run dev
 ```
 
 ---
 
-## 6. Technology Stack
+## Under the hood (brief)
 
-| Component | Technology |
-|---|---|
-| **Image Router** | MobileNet V2 (PyTorch, pretrained) |
-| **Disease Classifiers** | Custom Vision Transformers with SPT + LSA (PyTorch) |
-| **Reasoning LLM** | Qwen 3 via Ollama (local deployment) |
-| **Speech-to-Text** | STT engine (converts audio to text) |
-| **Backend API** | FastAPI (Python) |
-| **Frontend UI** | Google Stitch |
-| **Training Platform** | Kaggle Notebooks / Google Colab (GPU) |
-| **Deep Learning** | PyTorch |
+The ML sits behind a small, production-shaped service so it can grow into a real
+patient/doctor platform: a **FastAPI** backend with token-based accounts and
+roles, a **PostgreSQL** database (schema managed by migrations), token-by-token
+**streaming** of reports, a health tracker for patient vitals, and a
+**Docker** setup for the supporting services. Tests run automatically on every
+change. These details are deliberately kept in the background — the project is
+about the models.
 
----
-
-## 7. Model Summary
-
-| Model | Task | Classes | Accuracy | Params |
-|---|---|---|---|---|
-| MobileNet V2 | Image routing (eye/dental/skin) | 3 | **99.92%** | 2.88M |
-| Eye ViT | Eye disease classification | 4 | Moderate | ~21M |
-| Dental ViT | Dental disease classification | 6 | Moderate | ~21M |
-| Skin ViT | Skin disease classification | 10 | **67.55%** | ~21M |
-| Qwen 3 | DPT report generation | — | — | LLM |
+```
+backend/   FastAPI service + the model pipeline
+ml/        model training & evaluation (MobileNet router + 3 ViTs)
+frontend/  React web app
+docs/      technical write-up & design notes
+infra/     local services (Docker)
+```
 
 ---
 
-## 8. Output — The DPT Report
-
-The final output is a structured clinical report with three sections:
-
-### 🔍 Diagnosis
-- Identified disease/condition name
-- Clinical description and characteristics
-- Key indicators and symptoms
-- Differential diagnoses to consider
-
-### 📈 Prognosis
-- Expected disease progression
-- Severity assessment
-- Risk factors and complications
-- Recovery timeline estimates
-
-### 💊 Therapy
-- Recommended treatment options
-- Medication suggestions
-- Lifestyle modifications
-- When to seek specialist care
-- Follow-up recommendations
-
----
-
-## 9. Project Files
-
-| File | Purpose |
-|---|---|
-| `vit_eye_disease.py` | Eye ViT training script |
-| `vit_dental_disease.py` | Dental ViT training script |
-| `vit_skin_disease.py` | Skin ViT training script |
-| `mobilenet_router.py` | MobileNet router training + custom dataset creation |
-| `mobilenet_inference_cell.py` | Inference/testing cell for the router |
-| `vit_eye_disease.pth` | Trained eye ViT weights |
-| `vit_dental_disease.pth` | Trained dental ViT weights |
-| `vit_skin_disease.pth` | Trained skin ViT weights |
-| `mobilenet_router.pth` | Trained MobileNet router weights |
-
----
-
-## 10. Key Design Decisions
-
-1. **MobileNet V2 as router** — Lightweight (2.88M params), fast inference, and 99.92% accurate. It correctly identifies the image domain before expensive ViT inference runs.
-
-2. **Custom ViTs instead of pretrained** — Built from scratch with Shifted Patch Tokenization and Locality Self-Attention for better performance on small medical datasets.
-
-3. **Ollama for reasoning** — Runs locally, no API costs, no data privacy concerns (critical for medical data). Qwen 3 provides strong reasoning capabilities.
-
-4. **Three input modalities** — Covers the most common ways a patient might describe their condition: showing an image, typing symptoms, or speaking about them.
-
-5. **Two-stage image pipeline** — Router + specialized ViT ensures each domain gets a model optimized for its specific disease classes, rather than one model trying to handle all 20 diseases.
+## A note on data & safety
+This handles sensitive, health-related content. It is a portfolio
+project use only synthetic or properly licensed images in demos, never real
+patient data, and treat every output as a starting point for professional care,
+not a verdict.

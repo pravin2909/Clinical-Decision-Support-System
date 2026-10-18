@@ -1,5 +1,5 @@
 """
-Entrypoint for the DPT Clinical Decision Support Engine API.
+Entrypoint for the Clinical Decision Support Engine API.
 
 The application itself is assembled in ``app.application.create_app()``; this
 file only exposes the ASGI ``app`` object (so ``uvicorn main:app`` keeps working)

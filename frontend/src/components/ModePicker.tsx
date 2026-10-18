@@ -23,7 +23,7 @@ export default function ModePicker({ active, onChange }: ModePickerProps) {
             className={
               "flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-semibold transition-all " +
               (isActive
-                ? "bg-accent-500/15 text-accent-700 dark:text-accent-300 ring-1 ring-accent-500/25 shadow-sm backdrop-blur-sm"
+                ? "bg-accent-500/15 text-accent-700 dark:text-accent-300 ring-1 ring-accent-500/25 shadow-sm"
                 : "text-muted hover:text-content")
             }
           >

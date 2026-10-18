@@ -17,20 +17,20 @@ jobs:
       postgres:
         image: pgvector/pgvector:pg16
         env:
-          POSTGRES_USER: dpt
-          POSTGRES_PASSWORD: dpt
-          POSTGRES_DB: dpt_test
+          POSTGRES_USER: cds
+          POSTGRES_PASSWORD: cds
+          POSTGRES_DB: cds_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U dpt -d dpt_test"
+          --health-cmd "pg_isready -U cds -d cds_test"
           --health-interval 5s
           --health-timeout 3s
           --health-retries 10
 
     env:
-      DATABASE_URL: postgresql+asyncpg://dpt:dpt@localhost:5432/dpt_test
-      TEST_DATABASE_URL: postgresql+asyncpg://dpt:dpt@localhost:5432/dpt_test
+      DATABASE_URL: postgresql+asyncpg://cds:cds@localhost:5432/cds_test
+      TEST_DATABASE_URL: postgresql+asyncpg://cds:cds@localhost:5432/cds_test
 
     steps:
       - uses: actions/checkout@v4

@@ -8,7 +8,7 @@ Two client fixtures:
   and error-handling tests.
 - ``db_client``  — connects to a throwaway test database. Skipped automatically
   unless ``TEST_DATABASE_URL`` is set (CI sets it; locally, point it at a
-  ``dpt_test`` DB with migrations applied).
+  ``cds_test`` DB with migrations applied).
 """
 
 import os
@@ -16,10 +16,26 @@ import os
 # Contract tests run without a database; set this before app modules import.
 os.environ.setdefault("DB_ENABLED", "false")
 
+import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
 from app.application import create_app
+
+
+@pytest.fixture(autouse=True)
+def _reset_limiter_and_cache():
+    """
+    Rate-limiter buckets and cache counters are process-global (the per-process
+    fallback path). All in-process test clients share one client IP, so without a
+    reset one test's bursty traffic would 429 the next test's login. Reset before
+    each test for isolation.
+    """
+    from app.core import cache, ratelimit
+
+    ratelimit.reset()
+    cache.reset_stats()
+    yield
 
 
 @pytest_asyncio.fixture

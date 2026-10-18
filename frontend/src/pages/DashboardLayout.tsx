@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import type { CSSProperties } from "react";
-import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { Link, NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import Logo, { LogoMark } from "../components/Logo";
 import SettingsModal from "../components/SettingsModal";
+import { useAuth } from "../context/AuthProvider";
 
 interface NavItem {
   to: string;
@@ -11,34 +12,45 @@ interface NavItem {
   end?: boolean;
 }
 
-const NAV: NavItem[] = [
-  { to: "/app", label: "Overview", icon: "dashboard", end: true },
-  { to: "/app/diagnosis", label: "General Diagnosis", icon: "stethoscope" },
+const PATIENT_NAV: NavItem[] = [
+  { to: "/app", label: "Dashboard", icon: "space_dashboard", end: true },
+  { to: "/app/assistant", label: "Health Assistant", icon: "assistant" },
+  { to: "/app/doctors", label: "My Doctors", icon: "stethoscope" },
+  { to: "/app/messages", label: "Messages", icon: "chat" },
+  { to: "/app/tracker", label: "Health Tracker", icon: "monitor_heart" },
+  { to: "/app/prescriptions", label: "Prescriptions", icon: "medication" },
+  { to: "/app/history", label: "History", icon: "history" },
 ];
 
-/* Shared glass surfaces — colors come from CSS variables so they flip in dark mode */
+const DOCTOR_NAV: NavItem[] = [
+  { to: "/app", label: "Dashboard", icon: "space_dashboard", end: true },
+  { to: "/app/copilot-ai", label: "AI Copilot", icon: "neurology" },
+  { to: "/app/appointments", label: "Appointments", icon: "calendar_month" },
+  { to: "/app/patients", label: "Patients", icon: "groups" },
+  { to: "/app/messages", label: "Messages", icon: "chat" },
+];
+
+function navForRole(role: string | undefined): NavItem[] {
+  return role === "doctor" ? DOCTOR_NAV : PATIENT_NAV;
+}
+
+/* Flat solid surfaces (no frosted glass), consistent with the rest of the app. */
 const glassPanel: CSSProperties = {
-  background: "var(--glass-panel-bg)",
-  border: "1px solid var(--glass-panel-border)",
-  backdropFilter: "blur(22px) saturate(180%)",
-  WebkitBackdropFilter: "blur(22px) saturate(180%)",
-  boxShadow: "var(--glass-panel-shadow)",
+  background: "rgb(var(--surface))",
+  border: "1px solid rgb(var(--border))",
+  boxShadow: "0 1px 2px rgba(16,24,40,0.05)",
 };
 
 const glassControl: CSSProperties = {
-  background: "var(--glass-control-bg)",
-  border: "1px solid var(--glass-control-border)",
-  backdropFilter: "blur(18px) saturate(190%)",
-  WebkitBackdropFilter: "blur(18px) saturate(190%)",
-  boxShadow: "var(--glass-control-shadow)",
+  background: "rgb(var(--surface-2))",
+  border: "1px solid rgb(var(--border))",
+  boxShadow: "none",
 };
 
 const glassActive: CSSProperties = {
-  background: "var(--glass-strong-bg)",
-  border: "1px solid var(--glass-strong-border)",
-  backdropFilter: "blur(18px) saturate(190%)",
-  WebkitBackdropFilter: "blur(18px) saturate(190%)",
-  boxShadow: "var(--glass-strong-shadow)",
+  background: "rgb(var(--surface-2))",
+  border: "1px solid rgb(var(--border))",
+  boxShadow: "none",
 };
 
 /* Apple style type: San Francisco on Apple devices, clean fallbacks elsewhere */
@@ -81,6 +93,25 @@ function Sidebar({
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+  const { user, signOut } = useAuth();
+  const NAV = navForRole(user?.role);
+
+  const displayName = user?.full_name || user?.email || "Guest";
+  const roleLabel = user?.role ? user.role[0].toUpperCase() + user.role.slice(1) : "Not signed in";
+  const initials = (user?.full_name || user?.email || "U")
+    .trim()
+    .split(/\s+/)
+    .map((w) => w[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  async function handleLogout() {
+    setMenuOpen(false);
+    await signOut();
+    navigate("/");
+  }
 
   // Close the account menu on navigation.
   useEffect(() => setMenuOpen(false), [pathname]);
@@ -134,21 +165,28 @@ function Sidebar({
           >
             {({ isActive }) => (
               <span
-                style={isActive ? glassControl : undefined}
                 className={
-                  "flex items-center gap-3 rounded-xl " +
+                  "flex items-center gap-3 rounded-xl transition-colors " +
                   (collapsed ? "justify-center p-2.5 " : "px-3 py-2.5 ") +
-                  (isActive ? "" : "hover:bg-black/5 dark:hover:bg-white/5")
+                  (isActive
+                    ? "bg-accent-500/10 "
+                    : "hover:bg-black/5 dark:hover:bg-white/5")
                 }
               >
-                <span className="material-symbols-outlined text-[22px] leading-none text-accent-600">
+                <span
+                  className={
+                    "material-symbols-outlined text-[22px] leading-none " +
+                    (isActive ? "text-accent-600" : "text-muted")
+                  }
+                  style={{ fontVariationSettings: `'FILL' ${isActive ? 1 : 0}, 'wght' 400, 'GRAD' 0, 'opsz' 24` }}
+                >
                   {item.icon}
                 </span>
                 {!collapsed && (
                   <span
                     className={
                       "truncate text-[15px] " +
-                      (isActive ? "font-semibold text-content" : "font-medium text-muted")
+                      (isActive ? "font-semibold text-accent-700" : "font-medium text-muted")
                     }
                   >
                     {item.label}
@@ -189,12 +227,12 @@ function Sidebar({
               </span>
             </Link>
             <div className="my-1.5 border-t border-line" />
-            <Link to="/" onClick={() => setMenuOpen(false)} className="block">
+            <button type="button" onClick={handleLogout} className="block w-full text-left">
               <span className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-rose-500 hover:bg-rose-500/10">
                 <span className="material-symbols-outlined text-[20px]">logout</span>
                 Log out
               </span>
-            </Link>
+            </button>
           </div>
         )}
         <button
@@ -207,13 +245,13 @@ function Sidebar({
           }
         >
           <span className="size-9 shrink-0 rounded-full bg-accent-600 text-white flex items-center justify-center font-semibold text-xs">
-            DR
+            {initials}
           </span>
           {!collapsed && (
             <>
               <span className="min-w-0 flex-1 text-left">
-                <span className="block text-sm font-semibold text-content truncate">Dr. User</span>
-                <span className="block text-xs text-muted truncate">Clinician</span>
+                <span className="block text-sm font-semibold text-content truncate">{displayName}</span>
+                <span className="block text-xs text-muted truncate">{roleLabel}</span>
               </span>
               <span className="material-symbols-outlined text-lg text-muted shrink-0">
                 {menuOpen ? "expand_more" : "expand_less"}
@@ -227,6 +265,8 @@ function Sidebar({
 }
 
 function MobileTopNav() {
+  const { user } = useAuth();
+  const items = navForRole(user?.role);
   const activeStyle = (isActive: boolean) => (isActive ? glassActive : undefined);
   const linkClass = ({ isActive }: { isActive: boolean }) =>
     "rounded-xl transition-all " + (isActive ? "text-accent-700" : "text-muted");
@@ -234,33 +274,21 @@ function MobileTopNav() {
   return (
     <div
       style={glassPanel}
-      className="md:hidden flex items-center justify-between m-3 mb-0 px-3 h-14 rounded-2xl"
+      className="md:hidden flex items-center justify-between m-3 mb-0 px-3 h-14 rounded-2xl overflow-x-auto"
     >
-      <Link to="/">
+      <Link to="/" className="shrink-0">
         <Logo markClassName="size-7" textClassName="text-content !text-base" />
       </Link>
-      <div className="flex items-center gap-1 text-sm font-semibold">
-        <NavLink to="/app" end className={linkClass}>
-          {({ isActive }) => (
-            <span style={activeStyle(isActive)} className="block px-3 py-1.5 rounded-xl">
-              Home
-            </span>
-          )}
-        </NavLink>
-        <NavLink to="/app/diagnosis" className={linkClass}>
-          {({ isActive }) => (
-            <span style={activeStyle(isActive)} className="block px-3 py-1.5 rounded-xl">
-              Diagnosis
-            </span>
-          )}
-        </NavLink>
-        <NavLink to="/app/settings" className={linkClass}>
-          {({ isActive }) => (
-            <span style={activeStyle(isActive)} className="block px-3 py-1.5 rounded-xl">
-              Settings
-            </span>
-          )}
-        </NavLink>
+      <div className="flex items-center gap-1 text-sm font-semibold shrink-0">
+        {items.map((item) => (
+          <NavLink key={item.to} to={item.to} end={item.end} className={linkClass}>
+            {({ isActive }) => (
+              <span style={activeStyle(isActive)} className="block px-3 py-1.5 rounded-xl whitespace-nowrap">
+                {item.label}
+              </span>
+            )}
+          </NavLink>
+        ))}
       </div>
     </div>
   );
@@ -270,9 +298,12 @@ export default function DashboardLayout() {
   const [collapsed, setCollapsed] = useState(loadCollapsed);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const { pathname } = useLocation();
-  const onChat = pathname.startsWith("/app/diagnosis");
+  const onChat =
+    pathname.startsWith("/app/assistant") ||
+    pathname.startsWith("/app/copilot-ai") ||
+    pathname.startsWith("/app/messages");
 
-  /* Give the chat page the full width, then restore the saved choice on other pages */
+  /* Give chat-like pages the full width, then restore the saved choice on other pages */
   useEffect(() => {
     setCollapsed(onChat ? true : loadCollapsed());
   }, [onChat]);
@@ -297,7 +328,7 @@ export default function DashboardLayout() {
       <Sidebar collapsed={collapsed} onToggle={toggle} onOpenSettings={() => setSettingsOpen(true)} />
       <div className="flex-1 flex flex-col min-w-0">
         <MobileTopNav />
-        <main className="flex-1 overflow-y-auto">
+        <main className={"flex-1 " + (onChat ? "overflow-hidden" : "overflow-y-auto")}>
           <Outlet />
         </main>
       </div>

@@ -45,7 +45,7 @@ const appleFont: CSSProperties = {
 
 export default function OverviewPage() {
   return (
-    <div style={appleFont} className="max-w-6xl mx-auto px-6 md:px-8 py-10 antialiased">
+    <div style={appleFont} className="px-6 md:px-10 py-8 antialiased">
       <div className="mb-8">
         <h1 className="text-4xl font-semibold tracking-tight text-content">Welcome to MedCore</h1>
         <p className="text-lg text-muted mt-2">Your AI clinical screening assistant.</p>

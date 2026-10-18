@@ -1,6 +1,6 @@
 """
 ═══════════════════════════════════════════════════════════════════════
-  DPT Clinical Decision Support Engine
+  Clinical Decision Support Engine
   Skin Disease ViT — Kaggle Notebook Training Script
   
   Dataset : ismailpromus/skin-diseases-image-dataset  (10 classes)
@@ -416,7 +416,7 @@ def validate(model, loader, criterion, device):
 # ──────────────────────────────────────
 def main():
     print("=" * 60)
-    print("  🔬 DPT — SKIN DISEASE ViT TRAINING")
+    print("  🔬 CDS — SKIN DISEASE ViT TRAINING")
     print("=" * 60)
 
     # Download & prepare

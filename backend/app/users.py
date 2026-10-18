@@ -129,6 +129,23 @@ async def assign_doctor_patient(doctor_id: int, patient_id: int) -> dict:
         return {"id": link.id, "doctor_id": doctor_id, "patient_id": patient_id}
 
 
+async def list_doctors() -> list[dict]:
+    """Directory of doctors (id, name, specialty) for patients to connect with."""
+    async with session_scope() as session:
+        if session is None:
+            return []
+        rows = (await session.execute(
+            select(Doctor).options(selectinload(Doctor.user))
+        )).scalars().all()
+        return [{
+            "doctor_id": d.id,
+            "name": d.user.full_name if d.user else None,
+            "specialty": d.specialty,
+            "bio": d.bio,
+            "years_experience": d.years_experience,
+        } for d in rows]
+
+
 async def assigned_patient_ids(doctor_id: int) -> list[int]:
     async with session_scope() as session:
         if session is None:

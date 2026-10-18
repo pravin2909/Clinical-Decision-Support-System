@@ -9,7 +9,7 @@ from PIL import Image
 
 from app.config import (
     MOBILENET_PATH, VIT_CONFIGS,
-    DPT_IMAGE_PROMPT_TEMPLATE, DPT_TEXT_PROMPT_TEMPLATE,
+    IMAGE_PROMPT_TEMPLATE, TEXT_PROMPT_TEMPLATE,
     CONFIDENCE_UNCERTAIN_THRESHOLD, LOW_CONFIDENCE_CAUTION,
 )
 
@@ -23,16 +23,16 @@ from app.model_loader import (
     get_mobilenet_transform, get_vit_transform,
     load_image_from_bytes,
 )
-from app.reasoning import generate_dpt_report
+from app.reasoning import generate_report
 from app.speech import transcribe_audio
 
 
-class DPTPipeline:
+class CDSPipeline:
     """
     Main pipeline that orchestrates:
-      Image  → MobileNet Router → ViT Classifier → Gemma 3 → DPT Report
-      Text   → Gemma 3 → DPT Report
-      Audio  → STT → Gemma 3 → DPT Report
+      Image  → MobileNet Router → ViT Classifier → Gemma 3 → Clinical Report
+      Text   → Gemma 3 → Clinical Report
+      Audio  → STT → Gemma 3 → Clinical Report
     """
 
     def __init__(self):
@@ -53,7 +53,7 @@ class DPTPipeline:
     def load_models(self):
         """Load all models into memory. Call once at startup."""
         print("=" * 55)
-        print("  🚀 DPT Pipeline — Loading Models")
+        print("  🚀 CDS Pipeline — Loading Models")
         print("=" * 55)
         print(f"  Device: {self.device}")
 
@@ -155,7 +155,7 @@ class DPTPipeline:
     def build_image_prompt(self, routing: dict, classification: dict) -> str:
         """Build the LLM prompt for an image finding, flagging low confidence."""
         caution = LOW_CONFIDENCE_CAUTION if classification.get("uncertain") else ""
-        return DPT_IMAGE_PROMPT_TEMPLATE.format(
+        return IMAGE_PROMPT_TEMPLATE.format(
             domain=routing["domain"],
             disease=classification["disease"],
             confidence=classification["confidence"],
@@ -181,7 +181,7 @@ class DPTPipeline:
     async def process_image(self, image_bytes: bytes) -> dict:
         """
         Full image pipeline:
-          Image → Router → ViT → Gemma 3 → DPT Report
+          Image → Router → ViT → Gemma 3 → Clinical Report
         """
         image = load_image_from_bytes(image_bytes)
 
@@ -195,10 +195,10 @@ class DPTPipeline:
         if "error" in classification:
             return {"error": classification["error"]}
 
-        # Step 3: Generate DPT report
+        # Step 3: Generate clinical report
         prompt = self.build_image_prompt(routing, classification)
 
-        report = await generate_dpt_report(prompt)
+        report = await generate_report(prompt)
 
         return {
             "input_type": "image",
@@ -213,10 +213,10 @@ class DPTPipeline:
     async def process_text(self, symptoms: str) -> dict:
         """
         Text pipeline:
-          Symptoms text → Gemma 3 → DPT Report
+          Symptoms text → Gemma 3 → Clinical Report
         """
-        prompt = DPT_TEXT_PROMPT_TEMPLATE.format(symptoms=symptoms)
-        report = await generate_dpt_report(prompt)
+        prompt = TEXT_PROMPT_TEMPLATE.format(symptoms=symptoms)
+        report = await generate_report(prompt)
 
         return {
             "input_type": "text",
@@ -230,7 +230,7 @@ class DPTPipeline:
     async def process_audio(self, audio_bytes: bytes, filename: str) -> dict:
         """
         Audio pipeline:
-          Audio → STT → Text → Gemma 3 → DPT Report
+          Audio → STT → Text → Gemma 3 → Clinical Report
         """
         # Step 1: Transcribe
         transcription = transcribe_audio(audio_bytes, filename)
@@ -252,4 +252,4 @@ class DPTPipeline:
 
 
 # Global pipeline instance
-pipeline = DPTPipeline()
+pipeline = CDSPipeline()

@@ -17,6 +17,7 @@ from app.auth import (
     revoke_refresh_token,
     rotate_refresh_token,
 )
+from app.core.ratelimit import rate_limit
 from app.models_db import Role, User
 from app.schemas import (
     LogoutRequest,
@@ -57,7 +58,13 @@ async def register(req: RegisterRequest):
         raise HTTPException(status_code=400, detail=str(e))
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    # Brute-force guard: 10-attempt burst, refilling ~1 attempt / 3s, keyed by IP
+    # (there's no user id before login). 429 + Retry-After when exhausted.
+    dependencies=[Depends(rate_limit("login", capacity=10, refill_rate=0.33))],
+)
 async def login(form: OAuth2PasswordRequestForm = Depends()):
     """Log in with email (as `username`) + password; returns access + refresh tokens."""
     user = await users.authenticate(form.username, form.password)

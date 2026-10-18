@@ -1,5 +1,5 @@
 """
-Analysis endpoints: image / text / audio → DPT report, plus the doctor
+Analysis endpoints: image / text / audio → clinical report, plus the doctor
 evidence-grounded answer. Streaming variants use Server-Sent Events.
 
 These handlers are relocated verbatim from the original ``main.py``; behavior is
@@ -40,7 +40,7 @@ async def analyze_image(
     file: UploadFile = File(...),
     current_user: User | None = Depends(optional_current_user),
 ):
-    """Upload a medical image → routing + classification + DPT report."""
+    """Upload a medical image → routing + classification + clinical report."""
     if not pipeline.is_loaded():
         raise HTTPException(status_code=503, detail="Models are still loading. Please wait.")
 
@@ -80,13 +80,13 @@ async def analyze_image_stream(
     file: UploadFile = File(...),
     current_user: User | None = Depends(optional_current_user),
 ):
-    """Same as /analyze/image but streams the DPT report in real time (SSE)."""
+    """Same as /analyze/image but streams the clinical report in real time (SSE)."""
     if not pipeline.is_loaded():
         raise HTTPException(status_code=503, detail="Models are still loading.")
 
     image_bytes = await file.read()
     from app.model_loader import load_image_from_bytes
-    from app.reasoning import generate_dpt_report_stream
+    from app.reasoning import generate_report_stream
 
     image = load_image_from_bytes(image_bytes)
     routing = pipeline.classify_image_domain(image)
@@ -98,7 +98,7 @@ async def analyze_image_stream(
         yield f"data: {json.dumps(meta)}\n\n"
 
         report = ""
-        async for token in generate_dpt_report_stream(prompt):
+        async for token in generate_report_stream(prompt):
             report += token
             yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
 
@@ -126,7 +126,7 @@ async def analyze_text(
     symptoms: str = Form(...),
     current_user: User | None = Depends(optional_current_user),
 ):
-    """Submit symptom text → DPT clinical report."""
+    """Submit symptom text → clinical report."""
     if not symptoms.strip():
         raise HTTPException(status_code=400, detail="Symptoms text cannot be empty.")
 
@@ -149,22 +149,37 @@ async def analyze_text(
 @router.post("/text/stream")
 async def analyze_text_stream(
     symptoms: str = Form(...),
+    history: str = Form(default="[]"),
     current_user: User | None = Depends(optional_current_user),
 ):
-    """Stream the DPT report token-by-token for text symptoms (SSE)."""
+    """Stream the clinical report token-by-token for text symptoms (SSE).
+    Accepts optional JSON-encoded conversation history for follow-up questions.
+    """
     if not symptoms.strip():
         raise HTTPException(status_code=400, detail="Symptoms text cannot be empty.")
 
-    from app.config import DPT_TEXT_PROMPT_TEMPLATE
-    from app.reasoning import generate_dpt_report_stream
+    import json as _json
+    from app.config import PATIENT_CHAT_SYSTEM_PROMPT, TEXT_PROMPT_TEMPLATE
+    from app.reasoning import generate_report_stream_with_history
 
-    prompt = DPT_TEXT_PROMPT_TEMPLATE.format(symptoms=symptoms.strip())
+    try:
+        history_msgs = _json.loads(history) if history else []
+    except Exception:
+        history_msgs = []
+
+    # First message in a thread uses the structured template; follow-ups pass raw text.
+    if history_msgs:
+        user_message = symptoms.strip()
+    else:
+        user_message = TEXT_PROMPT_TEMPLATE.format(symptoms=symptoms.strip())
 
     async def event_stream():
         yield f"data: {json.dumps({'type': 'text_start', 'symptoms': symptoms.strip()})}\n\n"
 
         report = ""
-        async for token in generate_dpt_report_stream(prompt):
+        async for token in generate_report_stream_with_history(
+            user_message, history_msgs, system_prompt=PATIENT_CHAT_SYSTEM_PROMPT
+        ):
             report += token
             yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
 
@@ -180,12 +195,24 @@ async def analyze_text_stream(
 # ──────────────────────────────────────
 # Audio
 # ──────────────────────────────────────
+@router.post("/transcribe")
+async def transcribe(file: UploadFile = File(...)):
+    """Transcribe spoken audio to text only (for voice input into the chat)."""
+    from app import speech
+
+    audio_bytes = await file.read()
+    result = speech.transcribe_audio(audio_bytes, file.filename or "audio.wav")
+    if not result.get("success"):
+        raise HTTPException(status_code=400, detail=result.get("error") or "Could not transcribe audio.")
+    return {"text": result.get("text", "")}
+
+
 @router.post("/audio")
 async def analyze_audio(
     file: UploadFile = File(...),
     current_user: User | None = Depends(optional_current_user),
 ):
-    """Upload spoken symptoms → transcription → DPT report."""
+    """Upload spoken symptoms → transcription → clinical report."""
     if not pipeline.is_loaded():
         raise HTTPException(status_code=503, detail="Models are still loading. Please wait.")
 
@@ -224,13 +251,13 @@ async def analyze_audio_stream(
     file: UploadFile = File(...),
     current_user: User | None = Depends(optional_current_user),
 ):
-    """Transcribe audio, then stream the DPT report (SSE)."""
+    """Transcribe audio, then stream the clinical report (SSE)."""
     if not pipeline.is_loaded():
         raise HTTPException(status_code=503, detail="Models are still loading.")
 
     audio_bytes = await file.read()
-    from app.config import DPT_TEXT_PROMPT_TEMPLATE
-    from app.reasoning import generate_dpt_report_stream
+    from app.config import TEXT_PROMPT_TEMPLATE
+    from app.reasoning import generate_report_stream
     from app.speech import transcribe_audio
 
     transcription = transcribe_audio(audio_bytes, file.filename or "audio.wav")
@@ -241,12 +268,12 @@ async def analyze_audio_stream(
             return
 
         symptoms = transcription["text"]
-        prompt = DPT_TEXT_PROMPT_TEMPLATE.format(symptoms=symptoms)
+        prompt = TEXT_PROMPT_TEMPLATE.format(symptoms=symptoms)
 
         yield f"data: {json.dumps({'type': 'audio_start', 'transcription': symptoms})}\n\n"
 
         report = ""
-        async for token in generate_dpt_report_stream(prompt):
+        async for token in generate_report_stream(prompt):
             report += token
             yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
 
@@ -265,21 +292,30 @@ async def analyze_audio_stream(
 @router.post("/doctor/stream")
 async def analyze_doctor_stream(
     question: str = Form(...),
+    history: str = Form(default="[]"),
     current_user: User | None = Depends(optional_current_user),
 ):
-    """Retrieve literature (Europe PMC), then stream an answer citing it as [n]."""
+    """Retrieve literature (Europe PMC + Semantic Scholar), then stream a cited answer.
+    Accepts optional JSON-encoded conversation history for multi-turn sessions.
+    """
     if not question.strip():
         raise HTTPException(status_code=400, detail="Question cannot be empty.")
 
-    from app.research import generate_grounded_stream, search_literature
+    import json as _json
+    from app.research import generate_grounded_stream_with_history, search_literature
+
+    try:
+        history_msgs = _json.loads(history) if history else []
+    except Exception:
+        history_msgs = []
 
     q = question.strip()
-    sources = await search_literature(q, limit=5)
+    sources = await search_literature(q, limit=6)
 
     async def event_stream():
         yield f"data: {json.dumps({'type': 'sources', 'sources': sources})}\n\n"
         answer = ""
-        async for token in generate_grounded_stream(q, sources):
+        async for token in generate_grounded_stream_with_history(q, sources, history_msgs):
             answer += token
             yield f"data: {json.dumps({'type': 'token', 'content': token})}\n\n"
         await history_store.save_consultation(

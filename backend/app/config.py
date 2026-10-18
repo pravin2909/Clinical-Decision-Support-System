@@ -1,5 +1,5 @@
 """
-Configuration for the DPT Clinical Decision Support Engine.
+Configuration for the Clinical Decision Support Engine.
 All paths, model configs, and constants in one place.
 """
 
@@ -102,11 +102,28 @@ NORMALIZE_STD = [0.229, 0.224, 0.225]
 # Async SQLAlchemy URL. Local Homebrew Postgres uses trust auth (no password).
 DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql+asyncpg://pravin@localhost:5432/dpt_engine",
+    "postgresql+asyncpg://pravin@localhost:5432/cds_engine",
 )
 # When false, the app runs fully stateless (no history persisted) even if a URL
 # is set — useful for quick local runs without Postgres available.
 DB_ENABLED = os.getenv("DB_ENABLED", "true").lower() in ("1", "true", "yes", "on")
+
+# ──────────────────────────────────────
+# Redis — cache, rate limiting, (later) Celery broker
+# ──────────────────────────────────────
+# One Redis instance serves three jobs in this project. When REDIS_ENABLED is
+# false or Redis is unreachable, the app degrades gracefully: the cache becomes a
+# no-op (every lookup is a miss) and the rate limiter falls back to a per-process
+# token bucket, so a single node still enforces limits and nothing 500s.
+REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+REDIS_ENABLED = os.getenv("REDIS_ENABLED", "true").lower() in ("1", "true", "yes", "on")
+
+# Default TTL (seconds) for cache-aside entries unless an endpoint overrides it.
+CACHE_DEFAULT_TTL = int(os.getenv("CACHE_DEFAULT_TTL", "30"))
+
+# Bump this to invalidate every cache entry at once (e.g. after a deploy that
+# changes a cached payload's shape). It is baked into every cache key.
+CACHE_VERSION = os.getenv("CACHE_VERSION", "v1")
 
 # ──────────────────────────────────────
 # Authentication (JWT)
@@ -126,17 +143,28 @@ REFRESH_TOKEN_EXPIRE_DAYS = int(os.getenv("REFRESH_TOKEN_EXPIRE_DAYS", "30"))
 # LM Studio serves an OpenAI-compatible API at http://localhost:1234/v1
 # Ollama also exposes one at http://localhost:11434/v1
 LLM_BASE_URL = os.getenv("LLM_BASE_URL", "http://localhost:1234/v1")
-LLM_MODEL = os.getenv("LLM_MODEL", "google/gemma-4-e4b")
+# Agentic layer uses gpt-oss-20b (native OpenAI tool-calling). The legacy
+# single-shot endpoints still read LLM_MODEL too, so switching this upgrades both.
+LLM_MODEL = os.getenv("LLM_MODEL", "openai/gpt-oss-20b")
 # LM Studio ignores the key but the OpenAI-style API requires one to be present.
 LLM_API_KEY = os.getenv("LLM_API_KEY", "lm-studio")
+
+# Embeddings for pgvector RAG — served locally by LM Studio (OpenAI-compatible).
+# nomic-embed-text-v1.5 is 768-dim; keep EMBED_DIM in sync with the model.
+EMBED_MODEL = os.getenv("EMBED_MODEL", "text-embedding-nomic-embed-text-v1.5")
+EMBED_DIM = int(os.getenv("EMBED_DIM", "768"))
+
+# Max agent loop turns (LLM ↔ tools) before forcing a final answer — a safety
+# bound so a confused model can't loop forever.
+AGENT_MAX_STEPS = int(os.getenv("AGENT_MAX_STEPS", "6"))
 
 # Backwards-compatible alias (older code referenced OLLAMA_MODEL).
 OLLAMA_MODEL = LLM_MODEL
 
 # ──────────────────────────────────────
-# DPT Report System Prompt
+# Clinical Report System Prompt
 # ──────────────────────────────────────
-DPT_SYSTEM_PROMPT = """You are a helpful medical assistant. Explain the condition in clear, general language.
+REPORT_SYSTEM_PROMPT = """You are a helpful medical assistant. Explain the condition in clear, general language.
 
 RULES:
 - Answer directly and naturally — short paragraphs and simple bullet points. Do NOT use a rigid template or numbered "Diagnosis / Prognosis / Therapy" sections.
@@ -150,7 +178,7 @@ RULES:
 # report is framed as a low-confidence possibility rather than a likely finding.
 CONFIDENCE_UNCERTAIN_THRESHOLD = float(os.getenv("CONFIDENCE_UNCERTAIN_THRESHOLD", "55"))
 
-DPT_IMAGE_PROMPT_TEMPLATE = """A medical image was analyzed and the most likely finding is:
+IMAGE_PROMPT_TEMPLATE = """A medical image was analyzed and the most likely finding is:
 
 - Condition: {disease}
 - Confidence: {confidence:.1f}%
@@ -165,11 +193,29 @@ LOW_CONFIDENCE_CAUTION = (
     "that an in-person clinical assessment is needed to confirm.\n"
 )
 
-DPT_TEXT_PROMPT_TEMPLATE = """Someone described the following:
+TEXT_PROMPT_TEMPLATE = """Someone described the following:
 
 "{symptoms}"
 
 Explain in general terms the most likely condition(s), and what can typically be done about it — common treatments, self-care, and when to see a doctor. Keep it general and avoid alarming conclusions."""
+
+# Used by the patient text-chat endpoint (multi-turn, conversational).
+PATIENT_CHAT_SYSTEM_PROMPT = """You are a helpful medical assistant talking directly to a patient.
+
+When a patient first describes symptoms, structure your response with these sections:
+**What your symptoms may suggest** - name the most likely conditions and what signs point to them
+**Related conditions to be aware of** - other possibilities the patient should know about
+**What you can do** - home remedies, over-the-counter options, lifestyle changes
+**If symptoms persist or worsen** - specific warning signs that mean the patient should seek care urgently
+
+For follow-up questions in the same conversation, answer naturally without repeating the structure - just continue the discussion.
+
+Rules:
+- Use plain, easy-to-understand language with no medical jargon
+- Be factual and calm, not alarming or vague
+- Keep responses concise and focused
+- Do not start with filler phrases like "Sure" or "Great question"
+- Do not add a disclaimer paragraph at the end of every message"""
 
 
 # ──────────────────────────────────────
